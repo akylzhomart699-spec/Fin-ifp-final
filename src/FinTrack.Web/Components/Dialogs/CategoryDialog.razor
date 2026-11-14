@@ -1,0 +1,85 @@
+@inject ICategoryService Categories
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField T="string" @bind-Value="_model.Name" Label="Название" Required="true"
+                          RequiredError="Введите название" MaxLength="60" AutoFocus="true" />
+
+            <MudSelect T="CategoryType" @bind-Value="_model.Type" Label="Тип" Class="mt-3"
+                       ToStringFunc="CategoryPresets.TypeName" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem T="CategoryType" Value="CategoryType.Expense">Расход</MudSelectItem>
+                <MudSelectItem T="CategoryType" Value="CategoryType.Income">Доход</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect T="string" @bind-Value="_model.Color" Label="Цвет" Class="mt-3" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var color in CategoryPresets.Colors)
+                {
+                    <MudSelectItem T="string" Value="@color">
+                        <span class="category-dot" style="background:@color"></span>@color
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" @bind-Value="_model.Icon" Label="Иконка" Class="mt-3"
+                       ToStringFunc="CategoryPresets.IconName" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var (name, icon) in CategoryPresets.IconList)
+                {
+                    <MudSelectItem T="string" Value="@icon">
+                        <MudIcon Icon="@icon" Size="Size.Small" Class="mr-2" Style="vertical-align:middle" />@name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField T="string" @bind-Value="_model.Keywords" Label="Ключевые слова" Class="mt-3" Lines="2"
+                          HelperText="Через запятую, например: magnum, small. Помогают автокатегоризации." />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Сохранить</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Category? Existing { get; set; }
+    [Parameter] public CategoryType DefaultType { get; set; } = CategoryType.Expense;
+
+    private MudForm _form = default!;
+    private Category _model = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        // Работаем с копией, чтобы «Отмена» не меняла исходный объект
+        _model = Existing is null
+            ? new Category { Type = DefaultType, Color = CategoryPresets.Colors[0], Icon = CategoryPresets.IconList[^1].Icon }
+            : new Category
+            {
+                Id = Existing.Id, Name = Existing.Name, Type = Existing.Type,
+                Color = Existing.Color, Icon = Existing.Icon, Keywords = Existing.Keywords
+            };
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        _saving = true;
+        var result = await Categories.SaveAsync(_model);
+        _saving = false;
+
+        if (result.Ok) MudDialog.Close(DialogResult.Ok(true));
+        else _error = result.Error;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

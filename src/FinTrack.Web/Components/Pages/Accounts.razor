@@ -1,0 +1,85 @@
+@page "/accounts"
+@implements IDisposable
+@inject IAccountService AccountsService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject AppState State
+
+<PageTitle>Счета — FinTrack</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Счета</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => EditAsync(null)">Добавить счёт</MudButton>
+</div>
+
+@if (_items is not null && _items.Count > 0)
+{
+    <MudText Typo="Typo.subtitle1" Class="mb-3">Всего на счетах: <b><MoneyText Amount="_items.Sum(x => x.Balance)" /></b></MudText>
+}
+
+<EntityGrid Items="_items" EmptyText="Счетов пока нет" EmptyIcon="@Icons.Material.Filled.AccountBalance" Context="item">
+    <ItemTemplate>
+        <MudCard Elevation="1">
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle1">@item.Account.Name</MudText>
+                <MudText Typo="Typo.h5"><MoneyText Amount="item.Balance" Colored="@(item.Balance < 0)" /></MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Начальный остаток: @Money.Format(item.Account.InitialBalance)
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="() => EditAsync(item.Account)" aria-label="Изменить счёт" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteAsync(item.Account)" aria-label="Удалить счёт" />
+            </MudCardActions>
+        </MudCard>
+    </ItemTemplate>
+</EntityGrid>
+
+@code {
+    private List<AccountBalance>? _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try { _items = await AccountsService.GetWithBalancesAsync(); }
+        catch (Exception ex) { Snackbar.Add($"Не удалось загрузить счета: {ex.Message}", Severity.Error); _items ??= new(); }
+    }
+
+    private async Task EditAsync(Account? account)
+    {
+        var parameters = new DialogParameters { { "Existing", account } };
+        var dialog = await Dialogs.ShowAsync<AccountDialog>(account is null ? "Новый счёт" : "Изменить счёт", parameters, DialogDefaults.Form);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Счёт сохранён", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(Account account)
+    {
+        bool? confirmed = await Dialogs.ShowMessageBox("Удалить счёт?",
+            $"Счёт «{account.Name}» и все его операции будут удалены без возможности восстановления.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await AccountsService.DeleteAsync(account.Id);
+        Snackbar.Add(result.Ok ? "Счёт удалён" : result.Error!, result.Ok ? Severity.Success : Severity.Error);
+        if (result.Ok) await LoadAsync();
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

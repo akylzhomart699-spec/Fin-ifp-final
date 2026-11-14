@@ -1,0 +1,206 @@
+@inject ITransactionService Transactions
+@inject IAccountService Accounts
+@inject ICategoryService Categories
+@inject ICategorizationService Categorizer
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <div class="d-flex gap-2 mb-3" role="group" aria-label="Тип операции">
+                <MudButton Variant="@(_type == CategoryType.Expense ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Error" OnClick="() => SetType(CategoryType.Expense)">Расход</MudButton>
+                <MudButton Variant="@(_type == CategoryType.Income ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Success" OnClick="() => SetType(CategoryType.Income)">Доход</MudButton>
+            </div>
+
+            <MudForm @ref="_form">
+                <MudNumericField T="decimal" @bind-Value="_amount" Label="Сумма, ₸" Min="0" AutoFocus="true"
+                                 Validation="@(new Func<decimal, string?>(ValidateAmount))" />
+
+                <MudTextField T="string" Value="_description" ValueChanged="OnDescriptionChanged" Label="Описание"
+                              Required="true" RequiredError="Добавьте описание" MaxLength="300" Class="mt-3"
+                              DebounceInterval="400" HelperText="@_suggestHint" />
+
+                <MudSelect T="Guid" Value="_categoryId" ValueChanged="OnCategoryPicked" Label="Категория" Class="mt-3"
+                           ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var c in _categories.Where(c => c.Type == _type))
+                    {
+                        <MudSelectItem T="Guid" Value="@c.Id">
+                            <span class="category-dot" style="background:@c.Color"></span>@c.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="Guid" @bind-Value="_accountId" Label="Счёт" Class="mt-3" ToStringFunc="AccountName"
+                           AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var a in _accounts)
+                    {
+                        <MudSelectItem T="Guid" Value="@a.Id">@a.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudDatePicker @bind-Date="_date" Label="Дата" DateFormat="dd.MM.yyyy" Class="mt-3" />
+            </MudForm>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Existing is not null)
+        {
+            <MudButton Color="Color.Error" OnClick="DeleteAsync" Disabled="_saving" Class="mr-auto">Удалить</MudButton>
+        }
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving || _loading">
+            Сохранить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Операция для редактирования; null — новая.</summary>
+    [Parameter] public Transaction? Existing { get; set; }
+
+    private MudForm _form = default!;
+    private List<Account> _accounts = new();
+    private List<Category> _categories = new();
+    private bool _loading = true, _saving, _categoryTouched;
+    private CategoryType _type = CategoryType.Expense;
+    private decimal _amount;
+    private string _description = "";
+    private Guid _categoryId, _accountId;
+    private DateTime? _date = DateTime.Today;
+    private string? _error, _suggestHint;
+    private CategorySuggestion? _suggestion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _accounts = await Accounts.GetAllAsync();
+            _categories = await Categories.GetAllAsync();
+
+            if (Existing is not null)
+            {
+                _amount = Existing.Amount;
+                _description = Existing.Description;
+                _categoryId = Existing.CategoryId;
+                _accountId = Existing.AccountId;
+                _date = Existing.Date;
+                _type = _categories.FirstOrDefault(c => c.Id == Existing.CategoryId)?.Type ?? CategoryType.Expense;
+                _categoryTouched = true;
+            }
+            else
+            {
+                _accountId = _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Не удалось загрузить данные: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string? ValidateAmount(decimal value) => value <= 0 ? "Сумма должна быть больше нуля" : null;
+
+    private string CategoryName(Guid id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "";
+    private string AccountName(Guid id) => _accounts.FirstOrDefault(a => a.Id == id)?.Name ?? "";
+
+    private async Task SetType(CategoryType type)
+    {
+        if (_type == type) return;
+        _type = type;
+        _categoryId = Guid.Empty;
+        _categoryTouched = false;
+        _suggestHint = null;
+        await SuggestAsync();
+    }
+
+    private async Task OnDescriptionChanged(string value)
+    {
+        _description = value ?? "";
+        if (!_categoryTouched) await SuggestAsync();
+    }
+
+    private void OnCategoryPicked(Guid id)
+    {
+        _categoryId = id;
+        _categoryTouched = true;
+        _suggestHint = null;
+    }
+
+    /// <summary>Предлагает категорию по описанию (ML.NET или ключевые слова).</summary>
+    private async Task SuggestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_description)) return;
+        try
+        {
+            _suggestion = await Categorizer.SuggestAsync(_description, _type);
+            if (_suggestion is null) return;
+
+            _categoryId = _suggestion.CategoryId;
+            _suggestHint = _suggestion.Method == SuggestionMethods.Ml
+                ? $"Категория предложена ML.NET (уверенность {_suggestion.Confidence * 100:0}%)"
+                : $"Категория предложена по ключевым словам";
+        }
+        catch
+        {
+            // Подсказка не обязательна: при ошибке пользователь просто выберет категорию сам
+            _suggestHint = null;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        await _form.Validate();
+        if (!_form.IsValid) return;
+        if (_categoryId == Guid.Empty) { _error = "Выберите категорию."; return; }
+        if (_accountId == Guid.Empty) { _error = "Выберите счёт."; return; }
+
+        _saving = true;
+        var fromMl = _suggestion?.Method == SuggestionMethods.Ml && _suggestion.CategoryId == _categoryId;
+        var tx = new Transaction
+        {
+            Id = Existing?.Id ?? Guid.NewGuid(),
+            Amount = _amount,
+            Description = _description,
+            CategoryId = _categoryId,
+            AccountId = _accountId,
+            Date = _date ?? DateTime.Today,
+            Source = Existing?.Source ?? TransactionSource.Manual,
+            MlConfidence = fromMl ? _suggestion!.Confidence : Existing?.MlConfidence,
+        };
+
+        var result = await Transactions.SaveAsync(tx);
+        _saving = false;
+        if (result.Ok) MudDialog.Close(DialogResult.Ok(true));
+        else _error = result.Error;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (Existing is null) return;
+        _saving = true;
+        var result = await Transactions.DeleteAsync(Existing.Id);
+        _saving = false;
+        if (result.Ok) MudDialog.Close(DialogResult.Ok(true));
+        else _error = result.Error;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

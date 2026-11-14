@@ -1,0 +1,36 @@
+@* Карточка бюджета: прогресс трат по категории за месяц. *@
+<MudPaper Elevation="1" Class="pa-4">
+    <div class="d-flex align-center">
+        <span class="category-dot" style="background:@Status.Category.Color"></span>
+        <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@Status.Category.Name</MudText>
+        @if (OnEdit.HasDelegate)
+        {
+            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit"
+                           OnClick="() => OnEdit.InvokeAsync(Status)" aria-label="Изменить лимит" />
+        }
+        @if (OnDelete.HasDelegate)
+        {
+            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                           OnClick="() => OnDelete.InvokeAsync(Status)" aria-label="Удалить лимит" />
+        }
+    </div>
+    <MudProgressLinear Value="@Math.Min(Status.Percent, 100)" Color="@BarColor" Rounded="true" Size="Size.Medium"
+                       Class="my-2" aria-label="@($"Израсходовано {Status.Percent:0}%")" />
+    <div class="d-flex justify-space-between flex-wrap">
+        <MudText Typo="Typo.body2">@Money.Format(Status.Spent) из @Money.Format(Status.Budget.Limit)</MudText>
+        <MudText Typo="Typo.body2" Color="@TextColor" Class="budget-remaining">@RemainingText</MudText>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public BudgetStatus Status { get; set; } = default!;
+    [Parameter] public EventCallback<BudgetStatus> OnEdit { get; set; }
+    [Parameter] public EventCallback<BudgetStatus> OnDelete { get; set; }
+
+    private Color BarColor => Status.IsExceeded ? Color.Error : Status.IsWarning ? Color.Warning : Color.Success;
+    private Color TextColor => Status.IsExceeded ? Color.Error : Status.IsWarning ? Color.Warning : Color.Default;
+
+    private string RemainingText => Status.IsExceeded
+        ? $"Превышено на {Money.Format(-Status.Remaining)}"
+        : $"Осталось {Money.Format(Status.Remaining)}";
+}

@@ -1,0 +1,18 @@
+@implements IDisposable
+@inject AppState State
+
+<div class="d-flex align-center">
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="() => State.ShiftMonth(-1)" aria-label="Предыдущий месяц" />
+    <MudText Typo="Typo.subtitle1" Style="min-width:140px;text-align:center">
+        @MonthNames.Full[State.Month - 1] @State.Year
+    </MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="() => State.ShiftMonth(1)" aria-label="Следующий месяц" />
+</div>
+
+@code {
+    protected override void OnInitialized() => State.OnChange += Refresh;
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.OnChange -= Refresh;
+}

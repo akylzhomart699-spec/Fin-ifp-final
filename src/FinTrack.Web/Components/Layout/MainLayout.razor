@@ -1,0 +1,136 @@
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@using FinTrack.Web.Hubs
+@inject AppState State
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ILogger<MainLayout> Logger
+
+<MudThemeProvider Theme="_theme" IsDarkMode="State.IsDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="ToggleDrawer" aria-label="Открыть меню" />
+        <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Class="mr-2" />
+        <MudText Typo="Typo.h6">FinTrack</MudText>
+        <MudSpacer />
+        <MudTooltip Text="@(_hubConnected ? "Синхронизация в реальном времени включена" : "Нет связи с сервером уведомлений")">
+            <MudIcon Icon="@(_hubConnected ? Icons.Material.Filled.CloudDone : Icons.Material.Filled.CloudOff)"
+                     Class="mr-2" aria-label="Статус синхронизации" />
+        </MudTooltip>
+        <MudIconButton Icon="@(State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" OnClick="State.ToggleDarkMode" aria-label="Сменить тему" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Responsive" Elevation="1">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4 page-container">
+            <ErrorBoundary @ref="_errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <MudAlert Severity="Severity.Error" Class="my-4">
+                        Что-то пошло не так: @ex.Message
+                        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="Recover">Попробовать снова</MudButton>
+                    </MudAlert>
+                </ErrorContent>
+            </ErrorBoundary>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<BottomNav />
+
+<div id="blazor-error-ui">
+    Произошла непредвиденная ошибка.
+    <a href="" class="reload">Перезагрузить</a>
+    <a class="dismiss">✕</a>
+</div>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _hubConnected;
+    private HubConnection? _hub;
+    private ErrorBoundary? _errorBoundary;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2E7D5B",
+            Secondary = "#F4A261",
+            AppbarBackground = "#2E7D5B",
+            Success = "#2E7D5B",
+            Error = "#D62828",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#5FC79A",
+            Secondary = "#F4A261",
+            Success = "#5FC79A",
+        },
+        LayoutProperties = new LayoutProperties { DefaultBorderRadius = "10px" },
+    };
+
+    protected override void OnInitialized() => State.OnChange += OnStateChanged;
+
+    protected override void OnParametersSet() => _errorBoundary?.Recover();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/hubs/notifications"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<string, bool>(HubEvents.BudgetAlert, (message, exceeded) =>
+            InvokeAsync(() => Snackbar.Add(message, exceeded ? Severity.Error : Severity.Warning)));
+        _hub.On(HubEvents.DataChanged, () => InvokeAsync(State.NotifyDataChanged));
+
+        _hub.Reconnecting += _ => SetConnected(false);
+        _hub.Reconnected += _ => SetConnected(true);
+        _hub.Closed += _ => SetConnected(false);
+
+        try
+        {
+            await _hub.StartAsync();
+            _hubConnected = true;
+        }
+        catch (Exception ex)
+        {
+            // Приложение работает и без SignalR — просто без живых уведомлений
+            Logger.LogWarning(ex, "Не удалось подключиться к хабу уведомлений");
+            _hubConnected = false;
+        }
+        StateHasChanged();
+    }
+
+    private Task SetConnected(bool connected) => InvokeAsync(() =>
+    {
+        _hubConnected = connected;
+        StateHasChanged();
+    });
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void Recover() => _errorBoundary?.Recover();
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public async ValueTask DisposeAsync()
+    {
+        State.OnChange -= OnStateChanged;
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}

@@ -1,0 +1,33 @@
+@* Компактный список операций (для главной страницы). *@
+@if (Items.Count == 0)
+{
+    <EmptyState Icon="@Icons.Material.Filled.ReceiptLong" Text="Операций пока нет" />
+}
+else
+{
+    @foreach (var t in Items)
+    {
+        <div class="tx-row" @key="t.Id">
+            <MudAvatar Size="Size.Small" Style="@($"background:{t.Category?.Color};color:#fff")">
+                <MudIcon Icon="@(string.IsNullOrEmpty(t.Category?.Icon) ? Icons.Material.Filled.Label : t.Category!.Icon)" Size="Size.Small" />
+            </MudAvatar>
+            <div class="tx-main">
+                <div class="tx-title">@t.Description</div>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @t.Category?.Name · @t.Account?.Name · @t.Date.ToString("dd.MM.yyyy")
+                </MudText>
+            </div>
+            <MoneyText Amount="t.SignedAmount" ShowPlus="true" Colored="true" />
+            @if (OnEdit.HasDelegate)
+            {
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit"
+                               OnClick="() => OnEdit.InvokeAsync(t)" aria-label="Изменить операцию" />
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Transaction> Items { get; set; } = Array.Empty<Transaction>();
+    [Parameter] public EventCallback<Transaction> OnEdit { get; set; }
+}

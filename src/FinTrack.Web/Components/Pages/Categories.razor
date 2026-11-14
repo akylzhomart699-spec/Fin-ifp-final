@@ -1,0 +1,77 @@
+@page "/categories"
+@inject ICategoryService CategoriesService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Категории — FinTrack</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Категории</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => EditAsync(null, CategoryType.Expense)">Добавить</MudButton>
+</div>
+
+<MudText Typo="Typo.h6" Class="mb-2">Расходы</MudText>
+<EntityGrid Items="Expenses" EmptyText="Категорий расходов нет" Context="c">
+    <ItemTemplate>@CategoryCard(c)</ItemTemplate>
+</EntityGrid>
+
+<MudText Typo="Typo.h6" Class="mt-6 mb-2">Доходы</MudText>
+<EntityGrid Items="Incomes" EmptyText="Категорий доходов нет" Context="c">
+    <ItemTemplate>@CategoryCard(c)</ItemTemplate>
+</EntityGrid>
+
+@code {
+    private List<Category>? _all;
+
+    private IEnumerable<Category>? Expenses => _all?.Where(c => c.Type == CategoryType.Expense);
+    private IEnumerable<Category>? Incomes => _all?.Where(c => c.Type == CategoryType.Income);
+
+    private RenderFragment CategoryCard(Category c) => __builder =>
+    {
+        <MudPaper Elevation="1" Class="pa-3 d-flex align-center gap-3">
+            <MudAvatar Style="@($"background:{c.Color};color:#fff")">
+                <MudIcon Icon="@(string.IsNullOrEmpty(c.Icon) ? Icons.Material.Filled.Label : c.Icon)" />
+            </MudAvatar>
+            <div class="flex-grow-1" style="min-width:0">
+                <MudText Typo="Typo.subtitle1">@c.Name</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate d-block">
+                    @(string.IsNullOrWhiteSpace(c.Keywords) ? "Без ключевых слов" : c.Keywords)
+                </MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => EditAsync(c, c.Type)" aria-label="Изменить категорию" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(c)" aria-label="Удалить категорию" />
+        </MudPaper>
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try { _all = await CategoriesService.GetAllAsync(); }
+        catch (Exception ex) { Snackbar.Add($"Не удалось загрузить категории: {ex.Message}", Severity.Error); _all ??= new(); }
+    }
+
+    private async Task EditAsync(Category? category, CategoryType type)
+    {
+        var parameters = new DialogParameters { { "Existing", category }, { "DefaultType", type } };
+        var dialog = await Dialogs.ShowAsync<CategoryDialog>(category is null ? "Новая категория" : "Изменить категорию", parameters, DialogDefaults.Form);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Категория сохранена. Модель ML.NET переобучается в фоне.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(Category category)
+    {
+        bool? confirmed = await Dialogs.ShowMessageBox("Удалить категорию?", $"Категория «{category.Name}» будет удалена.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await CategoriesService.DeleteAsync(category.Id);
+        Snackbar.Add(result.Ok ? "Категория удалена" : result.Error!, result.Ok ? Severity.Success : Severity.Error);
+        if (result.Ok) await LoadAsync();
+    }
+}

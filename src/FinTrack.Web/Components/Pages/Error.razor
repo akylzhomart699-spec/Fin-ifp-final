@@ -1,0 +1,22 @@
+@page "/Error"
+@using System.Diagnostics
+@using Microsoft.AspNetCore.Http
+
+<PageTitle>Ошибка — FinTrack</PageTitle>
+
+<MudAlert Severity="Severity.Error" Class="my-4">
+    <MudText Typo="Typo.h5">Ошибка</MudText>
+    <MudText>При обработке запроса произошла ошибка. Попробуйте обновить страницу.</MudText>
+    @if (!string.IsNullOrEmpty(RequestId))
+    {
+        <MudText Typo="Typo.caption">Request ID: <code>@RequestId</code></MudText>
+    }
+</MudAlert>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    protected override void OnInitialized() => RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

@@ -1,0 +1,198 @@
+@page "/"
+@implements IDisposable
+@inject IStatsService Stats
+@inject IAccountService Accounts
+@inject IBudgetService Budgets
+@inject ITransactionService Transactions
+@inject AppState State
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Обзор — FinTrack</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Обзор</MudText>
+    <div class="d-flex gap-1" role="group" aria-label="Период">
+        <MudButton Size="Size.Small" Variant="@(_yearMode ? Variant.Outlined : Variant.Filled)" Color="Color.Primary"
+                   OnClick="() => SetYearMode(false)">Месяц</MudButton>
+        <MudButton Size="Size.Small" Variant="@(_yearMode ? Variant.Filled : Variant.Outlined)" Color="Color.Primary"
+                   OnClick="() => SetYearMode(true)">Год</MudButton>
+    </div>
+    @if (_yearMode)
+    {
+        <div class="d-flex align-center">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="() => State.ShiftMonth(-12)" aria-label="Предыдущий год" />
+            <MudText Typo="Typo.subtitle1" Style="min-width:100px;text-align:center">@State.Year год</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="() => State.ShiftMonth(12)" aria-label="Следующий год" />
+        </div>
+    }
+    else
+    {
+        <MonthSelector />
+    }
+</div>
+
+@if (_summary is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Title="Баланс по всем счетам" Value="_balance" Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Primary" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Title="@(_yearMode ? "Доходы за год" : "Доходы за месяц")" Value="_summary.Income" Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Title="@(_yearMode ? "Расходы за год" : "Расходы за месяц")" Value="_summary.Expense" Icon="@Icons.Material.Filled.TrendingDown" Color="Color.Error" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Title="Прогноз расходов" Value="_summary.Forecast" Icon="@Icons.Material.Filled.Insights" Color="Color.Warning"
+                      Subtitle="@(_yearMode ? "к концу года при текущем темпе" : "к концу месяца при текущем темпе")" />
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+                <MudText Typo="Typo.h6" Class="mb-2">Расходы по категориям</MudText>
+                @if (_donutData.Length == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.PieChart" Text="@(_yearMode ? "В этом году расходов нет" : "В этом месяце расходов нет")" />
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Donut" InputData="_donutData" InputLabels="_donutLabels"
+                              ChartOptions="_donutOptions" Width="240px" Height="240px" />
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+                <MudText Typo="Typo.h6" Class="mb-2">@(_yearMode ? $"Доходы и расходы по месяцам, {State.Year}" : "Доходы и расходы за 6 месяцев")</MudText>
+                <MudChart ChartType="ChartType.Bar" ChartSeries="_trendSeries" XAxisLabels="_trendLabels"
+                          ChartOptions="_trendOptions" Width="100%" Height="300px" />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <div class="d-flex align-center mb-2">
+                    <MudText Typo="Typo.h6" Class="flex-grow-1">Бюджеты</MudText>
+                    <MudButton Href="/budgets" Variant="Variant.Text" Size="Size.Small">Все</MudButton>
+                </div>
+                @if (_budgets.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Savings" Text="Лимиты на этот месяц не заданы">
+                        <MudButton Href="/budgets" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2">Задать лимиты</MudButton>
+                    </EmptyState>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var b in _budgets)
+                        {
+                            <BudgetProgress Status="b" @key="b.Budget.Id" />
+                        }
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <div class="d-flex align-center mb-2">
+                    <MudText Typo="Typo.h6" Class="flex-grow-1">Последние операции</MudText>
+                    <MudButton Href="/transactions" Variant="Variant.Text" Size="Size.Small">Все</MudButton>
+                </div>
+                <TransactionList Items="_recent" OnEdit="EditTransactionAsync" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MudFab Class="fab-add" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        OnClick="() => EditTransactionAsync(null)" aria-label="Добавить операцию" />
+
+@code {
+    private MonthSummary? _summary;
+    private bool _yearMode;
+    private decimal _balance;
+    private List<BudgetStatus> _budgets = new();
+    private List<Transaction> _recent = new();
+
+    private double[] _donutData = Array.Empty<double>();
+    private string[] _donutLabels = Array.Empty<string>();
+    private ChartOptions _donutOptions = new();
+
+    private List<ChartSeries> _trendSeries = new();
+    private string[] _trendLabels = Array.Empty<string>();
+    private readonly ChartOptions _trendOptions = new() { ChartPalette = new[] { "#2E7D5B", "#E76F51" } };
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var summary = _yearMode
+                ? await Stats.GetYearSummaryAsync(State.Year)
+                : await Stats.GetMonthSummaryAsync(State.Year, State.Month);
+            _balance = (await Accounts.GetWithBalancesAsync()).Sum(a => a.Balance);
+            _budgets = (await Budgets.GetStatusAsync(State.Year, State.Month)).Take(4).ToList();
+            var periodStart = _yearMode ? new DateTime(State.Year, 1, 1) : State.MonthStart;
+            var periodEnd = _yearMode ? periodStart.AddYears(1) : periodStart.AddMonths(1);
+            _recent = (await Transactions.GetAsync(new TransactionFilter(periodStart, periodEnd)))
+                .Take(8).ToList();
+
+            _donutData = summary.ByCategory.Select(c => (double)c.Amount).ToArray();
+            _donutLabels = summary.ByCategory.Select(c => $"{c.Name} — {Money.Format(c.Amount)}").ToArray();
+            _donutOptions = new ChartOptions { ChartPalette = summary.ByCategory.Select(c => c.Color).ToArray() };
+
+            _trendLabels = summary.Trend.Select(t => t.Label).ToArray();
+            _trendSeries = new List<ChartSeries>
+            {
+                new() { Name = "Доходы", Data = summary.Trend.Select(t => (double)t.Income).ToArray() },
+                new() { Name = "Расходы", Data = summary.Trend.Select(t => (double)t.Expense).ToArray() },
+            };
+            _summary = summary;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Не удалось загрузить обзор: {ex.Message}", Severity.Error);
+            _summary ??= new MonthSummary(0, 0, 0, Array.Empty<CategorySlice>(), Array.Empty<MonthPoint>());
+        }
+    }
+
+    private async Task SetYearMode(bool yearMode)
+    {
+        if (_yearMode == yearMode) return;
+        _yearMode = yearMode;
+        await LoadAsync();
+    }
+
+    private async Task EditTransactionAsync(Transaction? tx)
+    {
+        var parameters = new DialogParameters { { "Existing", tx } };
+        var dialog = await Dialogs.ShowAsync<TransactionDialog>(tx is null ? "Новая операция" : "Операция", parameters, DialogDefaults.Form);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Сохранено", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

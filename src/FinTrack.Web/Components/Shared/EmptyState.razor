@@ -1,0 +1,11 @@
+<div class="d-flex flex-column align-center justify-center pa-6" style="text-align:center">
+    <MudIcon Icon="@Icon" Size="Size.Large" Class="mb-2 mud-text-secondary" />
+    <MudText Typo="Typo.body1" Class="mud-text-secondary">@Text</MudText>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Inbox;
+    [Parameter] public string Text { get; set; } = "Здесь пока пусто";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

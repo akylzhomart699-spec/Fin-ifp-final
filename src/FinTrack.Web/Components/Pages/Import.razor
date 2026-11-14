@@ -1,0 +1,236 @@
+@page "/import"
+@inject ICsvImportService Importer
+@inject ICategorizationService Categorizer
+@inject IAccountService Accounts
+@inject ICategoryService Categories
+@inject ISnackbar Snackbar
+
+<PageTitle>Импорт выписки — FinTrack</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Импорт выписки</MudText>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudText Typo="Typo.h6" Class="mb-1">1. Выберите счёт и файл</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3 mud-text-secondary">
+                CSV с колонками «Дата», «Описание», «Сумма» (расход — со знаком минус).
+                Разделитель — запятая или точка с запятой.
+                <MudLink Href="sample-statement.csv" Target="_blank">Скачать пример файла</MudLink>
+            </MudText>
+
+            <MudSelect T="Guid" @bind-Value="_accountId" Label="Счёт, на который загрузить" Class="mb-4"
+                       ToStringFunc="AccountName" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var a in _accounts)
+                {
+                    <MudSelectItem T="Guid" Value="@a.Id">@a.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <div class="file-drop">
+                <MudIcon Icon="@Icons.Material.Filled.UploadFile" Size="Size.Large" Color="Color.Primary" />
+                <MudText Typo="Typo.body2">Выберите CSV-файл (до 2 МБ)</MudText>
+                <InputFile OnChange="OnFileSelected" accept=".csv,text/csv" aria-label="Файл выписки" />
+            </div>
+
+            @if (_parsing)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-3" />
+            }
+            @if (_fatal is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">@_fatal</MudAlert>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <div class="d-flex align-center mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Primary" Class="mr-2" />
+                <MudText Typo="Typo.h6">Модель ML.NET</MudText>
+            </div>
+            @if (Categorizer.IsModelReady)
+            {
+                <MudText Typo="Typo.body2">Обучена: @Categorizer.TrainedAt?.ToString("dd.MM.yyyy HH:mm")</MudText>
+                <MudText Typo="Typo.body2">Примеров: @Categorizer.TrainingSamples, категорий: @Categorizer.LabelsCount</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">
+                    Модель учится на ваших операциях. Если она не уверена (меньше @((CategorizationService.MinConfidence * 100).ToString("0"))%),
+                    используются ключевые слова категорий.
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">Модель ещё не обучена — используются ключевые слова.</MudText>
+            }
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Class="mt-3"
+                       OnClick="RetrainAsync" Disabled="_training">
+                @(_training ? "Обучение..." : "Переобучить")
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_rows is not null)
+{
+    <MudPaper Elevation="1" Class="pa-4 mt-4">
+        <div class="d-flex align-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6" Class="flex-grow-1">2. Проверьте операции</MudText>
+            <MudText Typo="Typo.body2">
+                Выбрано: <b>@SelectedCount</b> из @_rows.Count · ошибок: @(_rows.Count(r => r.Error is not null))
+                · дубликатов: @(_rows.Count(r => r.IsDuplicate))
+            </MudText>
+        </div>
+
+        <MudTable Items="_rows" Dense="true" Hover="true" FixedHeader="true" Virtualize="true" Height="55vh"
+                  Breakpoint="Breakpoint.Sm" Elevation="0" T="ImportRow">
+            <HeaderContent>
+                <MudTh>Импорт</MudTh>
+                <MudTh>Дата</MudTh>
+                <MudTh>Описание</MudTh>
+                <MudTh>Сумма</MudTh>
+                <MudTh>Категория</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Импорт">
+                    <MudCheckBox T="bool" @bind-Value="context.Include" Disabled="@(context.Error is not null)" Color="Color.Primary" />
+                </MudTd>
+                <MudTd DataLabel="Дата">@context.Date?.ToString("dd.MM.yyyy")</MudTd>
+                <MudTd DataLabel="Описание">
+                    @context.Description
+                    @if (context.Error is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block">Строка @context.Line: @context.Error</MudText>
+                    }
+                    else if (context.IsDuplicate)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="d-block">Похоже на дубликат — уже есть в базе</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Сумма"><MoneyText Amount="context.Amount" ShowPlus="true" Colored="true" /></MudTd>
+                <MudTd DataLabel="Категория">
+                    @if (context.Error is null)
+                    {
+                        <MudSelect T="Guid?" @bind-Value="context.CategoryId" Dense="true" Margin="Margin.Dense"
+                                   Variant="Variant.Outlined" ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var c in _categories.Where(c => c.Type == context.Type))
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">@c.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if (context.Method is not null)
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@MethodText(context)</MudText>
+                        }
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <div class="d-flex justify-end flex-wrap gap-2 mt-3">
+            <MudButton OnClick="Reset">Отмена</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="CommitAsync" Disabled="@(_saving || SelectedCount == 0)">
+                Импортировать (@SelectedCount)
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private List<Account> _accounts = new();
+    private List<Category> _categories = new();
+    private List<ImportRow>? _rows;
+    private Guid _accountId;
+    private bool _parsing, _saving, _training;
+    private string? _fatal;
+
+    private int SelectedCount => _rows?.Count(r => r.Include && r.Error is null && r.CategoryId is not null) ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _accounts = await Accounts.GetAllAsync();
+            _categories = await Categories.GetAllAsync();
+            _accountId = _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+        }
+        catch (Exception ex)
+        {
+            _fatal = $"Не удалось загрузить справочники: {ex.Message}";
+        }
+    }
+
+    private string AccountName(Guid id) => _accounts.FirstOrDefault(a => a.Id == id)?.Name ?? "";
+    private string CategoryName(Guid? id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "";
+
+    private static string MethodText(ImportRow row) => row.Method == SuggestionMethods.Ml
+        ? $"ML.NET, {row.Confidence * 100:0}%"
+        : row.Method ?? "";
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _fatal = null;
+        _rows = null;
+        var file = e.File;
+        if (file.Size > CsvImportService.MaxFileSize)
+        {
+            _fatal = "Файл больше 2 МБ.";
+            return;
+        }
+
+        _parsing = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(CsvImportService.MaxFileSize);
+            var parsed = await Importer.ParseAsync(stream);
+            if (parsed.FatalError is not null)
+            {
+                _fatal = parsed.FatalError;
+                return;
+            }
+            await Importer.PrepareAsync(parsed.Rows);
+            _rows = parsed.Rows;
+        }
+        catch (Exception ex)
+        {
+            _fatal = $"Не удалось прочитать файл: {ex.Message}";
+        }
+        finally
+        {
+            _parsing = false;
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_rows is null) return;
+        _saving = true;
+        var result = await Importer.CommitAsync(_rows, _accountId);
+        _saving = false;
+
+        if (result.Ok)
+        {
+            Snackbar.Add($"Импортировано операций: {result.Count}. Модель дообучается в фоне.", Severity.Success);
+            _rows = null;
+        }
+        else
+        {
+            Snackbar.Add(result.Error!, Severity.Error);
+        }
+    }
+
+    private async Task RetrainAsync()
+    {
+        _training = true;
+        await Categorizer.TrainAsync();
+        _training = false;
+        Snackbar.Add(Categorizer.IsModelReady ? "Модель переобучена" : "Не удалось обучить модель", Categorizer.IsModelReady ? Severity.Success : Severity.Warning);
+    }
+
+    private void Reset()
+    {
+        _rows = null;
+        _fatal = null;
+    }
+}

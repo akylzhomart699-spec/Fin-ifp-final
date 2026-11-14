@@ -1,0 +1,15 @@
+@* Нижнее меню: показывается только на телефонах и планшетах (см. app.css) *@
+<nav class="bottom-nav" aria-label="Нижнее меню">
+    <NavLink href="" Match="NavLinkMatch.All">
+        <MudIcon Icon="@Icons.Material.Filled.Dashboard" /><span>Обзор</span>
+    </NavLink>
+    <NavLink href="transactions">
+        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" /><span>Операции</span>
+    </NavLink>
+    <NavLink href="budgets">
+        <MudIcon Icon="@Icons.Material.Filled.Savings" /><span>Бюджеты</span>
+    </NavLink>
+    <NavLink href="import">
+        <MudIcon Icon="@Icons.Material.Filled.UploadFile" /><span>Импорт</span>
+    </NavLink>
+</nav>

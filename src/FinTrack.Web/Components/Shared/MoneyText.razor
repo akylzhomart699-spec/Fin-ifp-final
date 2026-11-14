@@ -1,0 +1,10 @@
+@* Сумма в тенге. Colored: зелёный для дохода, красный для расхода. *@
+<span class="@CssClass">@Money.Format(Amount, ShowPlus)</span>
+
+@code {
+    [Parameter] public decimal Amount { get; set; }
+    [Parameter] public bool ShowPlus { get; set; }
+    [Parameter] public bool Colored { get; set; }
+
+    private string? CssClass => !Colored ? null : Amount < 0 ? "money-expense" : "money-income";
+}

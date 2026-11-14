@@ -1,0 +1,103 @@
+@page "/budgets"
+@implements IDisposable
+@inject IBudgetService BudgetsService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject AppState State
+
+<PageTitle>Бюджеты — FinTrack</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Бюджеты</MudText>
+    <MonthSelector />
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">
+        Задать лимит
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyPreviousAsync">
+        Скопировать из прошлого месяца
+    </MudButton>
+</div>
+
+@if (_items is not null && _items.Count > 0)
+{
+    var totalLimit = _items.Sum(s => s.Budget.Limit);
+    var totalSpent = _items.Sum(s => s.Spent);
+    <MudAlert Severity="@(totalSpent > totalLimit ? Severity.Error : Severity.Info)" Class="mb-4" Dense="true">
+        По лимитам потрачено @Money.Format(totalSpent) из @Money.Format(totalLimit).
+        Превышено: @(_items.Count(s => s.IsExceeded)), близко к лимиту: @(_items.Count(s => s.IsWarning)).
+    </MudAlert>
+}
+
+<EntityGrid Items="_items" EmptyText="На этот месяц лимиты не заданы" EmptyIcon="@Icons.Material.Filled.Savings" Context="status">
+    <ItemTemplate>
+        <BudgetProgress Status="status" OnEdit="EditAsync" OnDelete="DeleteAsync" />
+    </ItemTemplate>
+</EntityGrid>
+
+@code {
+    private List<BudgetStatus>? _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try { _items = await BudgetsService.GetStatusAsync(State.Year, State.Month); }
+        catch (Exception ex) { Snackbar.Add($"Не удалось загрузить бюджеты: {ex.Message}", Severity.Error); _items ??= new(); }
+    }
+
+    private Task AddAsync() => OpenDialogAsync(Guid.Empty, 0, isEdit: false);
+
+    private Task EditAsync(BudgetStatus status) => OpenDialogAsync(status.Category.Id, status.Budget.Limit, isEdit: true);
+
+    private async Task OpenDialogAsync(Guid categoryId, decimal limit, bool isEdit)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Year", State.Year },
+            { "Month", State.Month },
+            { "CategoryId", categoryId },
+            { "Limit", limit },
+            { "IsEdit", isEdit },
+        };
+        var dialog = await Dialogs.ShowAsync<BudgetDialog>(isEdit ? "Изменить лимит" : "Новый лимит", parameters, DialogDefaults.Form);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Лимит сохранён", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(BudgetStatus status)
+    {
+        bool? confirmed = await Dialogs.ShowMessageBox("Удалить лимит?", $"Лимит по категории «{status.Category.Name}» будет удалён.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await BudgetsService.DeleteAsync(status.Budget.Id);
+        Snackbar.Add(result.Ok ? "Лимит удалён" : result.Error!, result.Ok ? Severity.Success : Severity.Error);
+        if (result.Ok) await LoadAsync();
+    }
+
+    private async Task CopyPreviousAsync()
+    {
+        var result = await BudgetsService.CopyFromPreviousMonthAsync(State.Year, State.Month);
+        Snackbar.Add(result.Ok ? $"Скопировано лимитов: {result.Count}" : result.Error!, result.Ok ? Severity.Success : Severity.Warning);
+        if (result.Ok) await LoadAsync();
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

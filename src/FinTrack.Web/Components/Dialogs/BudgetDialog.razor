@@ -1,0 +1,71 @@
+@inject IBudgetService Budgets
+@inject ICategoryService Categories
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">@MonthNames.Full[Month - 1] @Year</MudText>
+        <MudForm @ref="_form">
+            <MudSelect T="Guid" @bind-Value="_categoryId" Label="Категория расходов" Disabled="IsEdit"
+                       ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var c in _categories)
+                {
+                    <MudSelectItem T="Guid" Value="@c.Id">
+                        <span class="category-dot" style="background:@c.Color"></span>@c.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="decimal" @bind-Value="_limit" Label="Лимит на месяц, ₸" Min="0" Class="mt-3"
+                             Validation="@(new Func<decimal, string?>(v => v <= 0 ? "Лимит должен быть больше нуля" : null))" />
+        </MudForm>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Сохранить</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int Year { get; set; }
+    [Parameter] public int Month { get; set; } = 1;
+    [Parameter] public Guid CategoryId { get; set; }
+    [Parameter] public decimal Limit { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm _form = default!;
+    private List<Category> _categories = new();
+    private Guid _categoryId;
+    private decimal _limit;
+    private bool _saving;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categoryId = CategoryId;
+        _limit = Limit;
+        _categories = await Categories.GetAllAsync(CategoryType.Expense);
+    }
+
+    private string CategoryName(Guid id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "";
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        await _form.Validate();
+        if (!_form.IsValid) return;
+        if (_categoryId == Guid.Empty) { _error = "Выберите категорию."; return; }
+
+        _saving = true;
+        var result = await Budgets.SaveAsync(_categoryId, Year, Month, _limit);
+        _saving = false;
+
+        if (result.Ok) MudDialog.Close(DialogResult.Ok(true));
+        else _error = result.Error;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

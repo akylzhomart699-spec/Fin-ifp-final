@@ -1,0 +1,29 @@
+@typeparam TItem
+@* Обобщённый (templated) компонент: адаптивная сетка карточек для любого типа данных. *@
+
+@if (Items is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (!Items.Any())
+{
+    <EmptyState Icon="@EmptyIcon" Text="@EmptyText" />
+}
+else
+{
+    <MudGrid Spacing="2">
+        @foreach (var item in Items)
+        {
+            <MudItem xs="12" sm="6" md="4" @key="item">
+                @ItemTemplate(item)
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = default!;
+    [Parameter] public string EmptyText { get; set; } = "Здесь пока пусто";
+    [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Filled.Inbox;
+}

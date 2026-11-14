@@ -1,0 +1,229 @@
+@page "/transactions"
+@implements IDisposable
+@inject ITransactionService TransactionsService
+@inject IAccountService Accounts
+@inject ICategoryService Categories
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject AppState State
+
+<PageTitle>Операции — FinTrack</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Операции</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => EditAsync(null)">Добавить</MudButton>
+</div>
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="3">
+            <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Label="Поиск"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          DebounceInterval="300" Clearable="true" />
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudDatePicker Date="_from" DateChanged="OnFromChanged" Label="С" DateFormat="dd.MM.yyyy"
+                           Clearable="true" Placeholder="любая дата" />
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudDatePicker Date="_to" DateChanged="OnToChanged" Label="По" DateFormat="dd.MM.yyyy"
+                           Clearable="true" Placeholder="любая дата" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="Guid?" Value="_accountId" ValueChanged="OnAccountChanged" Label="Счёт" Clearable="true"
+                       ToStringFunc="AccountName" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var a in _accounts)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)a.Id)">@a.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid?" Value="_categoryId" ValueChanged="OnCategoryChanged" Label="Категория" Clearable="true"
+                       ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var c in _categories)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">
+                        <span class="category-dot" style="background:@c.Color"></span>@c.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    <div class="d-flex flex-wrap gap-2 mt-3" role="group" aria-label="Быстрый выбор периода">
+        @foreach (var preset in Presets)
+        {
+            <MudButton Size="Size.Small" Variant="@(IsActive(preset) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary"
+                       OnClick="() => ApplyPresetAsync(preset)">@preset.Name</MudButton>
+        }
+    </div>
+    <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">
+        Совет: в календаре нажмите на год или месяц вверху, чтобы быстро перейти к нужной дате.
+    </MudText>
+</MudPaper>
+
+<div class="d-flex flex-wrap gap-4 mb-2">
+    <MudText Typo="Typo.body2">Найдено: <b>@_items.Count</b></MudText>
+    <MudText Typo="Typo.body2">Доходы: <MoneyText Amount="TotalIncome" Colored="true" /></MudText>
+    <MudText Typo="Typo.body2">Расходы: <MoneyText Amount="-TotalExpense" Colored="true" /></MudText>
+</div>
+
+<MudTable Items="_items" Hover="true" Dense="true" FixedHeader="true" Virtualize="true" Height="60vh"
+          Breakpoint="Breakpoint.Sm" Loading="_loading" Elevation="1" OnRowClick="@((TableRowClickEventArgs<Transaction> e) => EditAsync(e.Item))"
+          T="Transaction" Class="clickable-rows">
+    <HeaderContent>
+        <MudTh>Дата</MudTh>
+        <MudTh>Описание</MudTh>
+        <MudTh>Категория</MudTh>
+        <MudTh>Счёт</MudTh>
+        <MudTh Style="text-align:right">Сумма</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Дата">@context.Date.ToString("dd.MM.yyyy")</MudTd>
+        <MudTd DataLabel="Описание">
+            @context.Description
+            @if (context.Source == TransactionSource.Import)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary ml-1">@ImportLabel(context)</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Категория">
+            <span class="category-dot" style="background:@context.Category?.Color"></span>@context.Category?.Name
+        </MudTd>
+        <MudTd DataLabel="Счёт">@context.Account?.Name</MudTd>
+        <MudTd DataLabel="Сумма" Style="text-align:right">
+            <MoneyText Amount="context.SignedAmount" ShowPlus="true" Colored="true" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <EmptyState Icon="@Icons.Material.Filled.ReceiptLong" Text="Операций по фильтру не найдено" />
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<Transaction> _items = new();
+    private List<Account> _accounts = new();
+    private List<Category> _categories = new();
+    private bool _loading = true;
+
+    private string _search = "";
+    private Guid? _accountId;
+    private Guid? _categoryId;
+    private DateTime? _from = DateTime.Today.AddDays(1 - DateTime.Today.Day);
+    private DateTime? _to = DateTime.Today.AddDays(1 - DateTime.Today.Day).AddMonths(1).AddDays(-1);
+
+    private sealed record PeriodPreset(string Name, DateTime? From, DateTime? To);
+
+    private static IReadOnlyList<PeriodPreset> Presets
+    {
+        get
+        {
+            var today = DateTime.Today;
+            var month = new DateTime(today.Year, today.Month, 1);
+            var year = new DateTime(today.Year, 1, 1);
+            return new List<PeriodPreset>
+            {
+                new("Этот месяц", month, month.AddMonths(1).AddDays(-1)),
+                new("Прошлый месяц", month.AddMonths(-1), month.AddDays(-1)),
+                new("3 месяца", month.AddMonths(-2), today),
+                new("С начала года", year, today),
+                new("Прошлый год", year.AddYears(-1), year.AddDays(-1)),
+                new("Всё время", null, null),
+            };
+        }
+    }
+
+    private decimal TotalIncome => _items.Where(t => t.Category?.Type == CategoryType.Income).Sum(t => t.Amount);
+    private decimal TotalExpense => _items.Where(t => t.Category?.Type == CategoryType.Expense).Sum(t => t.Amount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        try
+        {
+            _accounts = await Accounts.GetAllAsync();
+            _categories = await Categories.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Не удалось загрузить справочники: {ex.Message}", Severity.Error);
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var filter = new TransactionFilter(
+                _from?.Date,
+                _to?.Date.AddDays(1),
+                _accountId,
+                _categoryId,
+                _search);
+            _items = await TransactionsService.GetAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Не удалось загрузить операции: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string ImportLabel(Transaction t) =>
+        t.MlConfidence is float confidence ? $"(импорт, ML {confidence * 100:0}%)" : "(импорт)";
+
+    private string AccountName(Guid? id) => _accounts.FirstOrDefault(a => a.Id == id)?.Name ?? "";
+    private string CategoryName(Guid? id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "";
+
+    private async Task OnSearchChanged(string value) { _search = value ?? ""; await LoadAsync(); }
+    private async Task OnFromChanged(DateTime? date)
+    {
+        _from = date;
+        if (_from is not null && _to is not null && _from > _to) _to = _from; // «С» не может быть позже «По»
+        await LoadAsync();
+    }
+
+    private async Task OnToChanged(DateTime? date)
+    {
+        _to = date;
+        if (_from is not null && _to is not null && _to < _from) _from = _to;
+        await LoadAsync();
+    }
+
+    private bool IsActive(PeriodPreset preset) => _from?.Date == preset.From?.Date && _to?.Date == preset.To?.Date;
+
+    private async Task ApplyPresetAsync(PeriodPreset preset)
+    {
+        _from = preset.From;
+        _to = preset.To;
+        await LoadAsync();
+    }
+    private async Task OnAccountChanged(Guid? id) { _accountId = id; await LoadAsync(); }
+    private async Task OnCategoryChanged(Guid? id) { _categoryId = id; await LoadAsync(); }
+
+    private async Task EditAsync(Transaction? tx)
+    {
+        var parameters = new DialogParameters { { "Existing", tx } };
+        var dialog = await Dialogs.ShowAsync<TransactionDialog>(tx is null ? "Новая операция" : "Операция", parameters, DialogDefaults.Form);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Готово", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}
