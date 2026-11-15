@@ -31,14 +31,14 @@ public sealed record ImportParseResult(List<ImportRow> Rows, string? FatalError)
     public static ImportParseResult Fatal(string error) => new(new List<ImportRow>(), error);
 }
 
-/// <summary>Импорт банковской выписки из CSV: разбор, автокатегории, поиск дубликатов, сохранение.</summary>
+/// <summary>Импорт банковской выписки (CSV или PDF Kaspi): разбор, автокатегории, поиск дубликатов, сохранение.</summary>
 public sealed class CsvImportService(
     IDbContextFactory<AppDbContext> factory,
     ICategorizationService categorizer,
     ITransactionService transactions,
     ILogger<CsvImportService> logger) : ICsvImportService
 {
-    public const long MaxFileSize = 2 * 1024 * 1024;
+    public const long MaxFileSize = 10 * 1024 * 1024;
     public const int MaxRows = 5000;
 
     private static readonly string[] DateHeaders = ["дата", "date", "дата операции", "дата транзакции"];
@@ -47,8 +47,16 @@ public sealed class CsvImportService(
     private static readonly string[] DateFormats =
         ["dd.MM.yyyy", "dd.MM.yy", "yyyy-MM-dd", "dd/MM/yyyy", "dd.MM.yyyy HH:mm", "dd.MM.yyyy HH:mm:ss", "yyyy-MM-dd HH:mm:ss"];
 
-    public async Task<ImportParseResult> ParseAsync(Stream stream, CancellationToken ct = default)
+    public async Task<ImportParseResult> ParseAsync(Stream stream, string fileName, CancellationToken ct = default)
     {
+        if (Path.GetExtension(fileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            // Поток из браузера нельзя перематывать, а PdfPig нужен произвольный доступ — копируем в память
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, ct);
+            return KaspiPdfParser.Parse(buffer.ToArray());
+        }
+
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         var text = await reader.ReadToEndAsync(ct);
         return ParseText(text);

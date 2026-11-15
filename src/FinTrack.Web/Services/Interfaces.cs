@@ -102,7 +102,8 @@ public interface ICategorizationService
 
 public interface ICsvImportService
 {
-    Task<ImportParseResult> ParseAsync(Stream stream, CancellationToken ct = default);
+    /// <summary>Разбирает файл выписки: CSV или PDF Kaspi (определяется по расширению).</summary>
+    Task<ImportParseResult> ParseAsync(Stream stream, string fileName, CancellationToken ct = default);
     Task PrepareAsync(List<ImportRow> rows, CancellationToken ct = default);
     Task<Result> CommitAsync(IReadOnlyCollection<ImportRow> rows, Guid accountId);
 }

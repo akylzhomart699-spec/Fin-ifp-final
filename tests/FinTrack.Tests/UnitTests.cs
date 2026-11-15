@@ -197,3 +197,39 @@ public class KeywordMatchTests
     public void UnknownText_ReturnsNull() =>
         Assert.Null(CategorizationService.KeywordMatch("что-то непонятное", Categories));
 }
+
+public class KaspiPdfParserTests
+{
+    [Fact]
+    public void ParsesKaspiOperationLines()
+    {
+        var lines = new[]
+        {
+            "ВЫПИСКА по Kaspi Gold",
+            "Дата Сумма Операция Детали",
+            "14.11.26 - 4 309,00 ₸ Покупка YANDEX.EDA",
+            "Курсовая разница",
+            "12.11.26 + 60 000,00 ₸ Пополнение В Kaspi Терминале",
+            "12.11.26 - 2 000,00 ₸ Перевод Азамат Б.",
+        };
+
+        var result = KaspiPdfParser.ParseLines(lines);
+
+        Assert.Null(result.FatalError);
+        Assert.Equal(3, result.Rows.Count);
+
+        Assert.Equal(new DateTime(2026, 11, 14), result.Rows[0].Date);
+        Assert.Equal(-4309m, result.Rows[0].Amount);
+        Assert.Equal("YANDEX.EDA", result.Rows[0].Description);
+
+        Assert.Equal(60000m, result.Rows[1].Amount);
+        Assert.Equal(CategoryType.Income, result.Rows[1].Type);
+        Assert.Equal("Пополнение В Kaspi Терминале", result.Rows[1].Description);
+
+        Assert.Equal("Перевод Азамат Б.", result.Rows[2].Description);
+    }
+
+    [Fact]
+    public void NoOperations_IsFatal() =>
+        Assert.NotNull(KaspiPdfParser.ParseLines(new[] { "СПРАВКА об остатке на счете" }).FatalError);
+}
