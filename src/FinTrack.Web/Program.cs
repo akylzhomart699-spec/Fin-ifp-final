@@ -38,9 +38,9 @@ var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
+    // HTTPS обеспечивает хостинг (Render) перед приложением, поэтому без UseHttpsRedirection —
+    // иначе за прокси получится бесконечный редирект
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
-    app.UseHttpsRedirection();
 }
 
 app.UseStaticFiles();

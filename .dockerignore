@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.csv
+!src/FinTrack.Web/wwwroot/sample-statement.csv
+**/*.pdf
+tests/
+.git/
+.vs/
+.vscode/
