@@ -5,7 +5,7 @@
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-2">@MonthNames.Full[Month - 1] @Year</MudText>
         <MudForm @ref="_form">
-            <MudSelect T="Guid" @bind-Value="_categoryId" Label="Категория расходов" Disabled="IsEdit"
+            <MudSelect T="Guid" @bind-Value="_categoryId" Label="Expense category" Disabled="IsEdit"
                        ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var c in _categories)
                 {
@@ -14,8 +14,8 @@
                     </MudSelectItem>
                 }
             </MudSelect>
-            <MudNumericField T="decimal" @bind-Value="_limit" Label="Лимит на месяц, ₸" Min="0" Class="mt-3"
-                             Validation="@(new Func<decimal, string?>(v => v <= 0 ? "Лимит должен быть больше нуля" : null))" />
+            <MudNumericField T="decimal" @bind-Value="_limit" Label="Monthly limit, ₸" Min="0" Class="mt-3"
+                             Validation="@(new Func<decimal, string?>(v => v <= 0 ? "The limit must be greater than zero" : null))" />
         </MudForm>
         @if (_error is not null)
         {
@@ -23,8 +23,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Отмена</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Сохранить</MudButton>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -57,7 +57,7 @@
         _error = null;
         await _form.Validate();
         if (!_form.IsValid) return;
-        if (_categoryId == Guid.Empty) { _error = "Выберите категорию."; return; }
+        if (_categoryId == Guid.Empty) { _error = "Select a category."; return; }
 
         _saving = true;
         var result = await Budgets.SaveAsync(_categoryId, Year, Month, _limit);

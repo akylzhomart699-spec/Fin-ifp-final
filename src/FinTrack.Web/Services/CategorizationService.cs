@@ -6,14 +6,14 @@ using Microsoft.ML.Data;
 
 namespace FinTrack.Web.Services;
 
-/// <summary>Входные данные модели: текст описания и метка (Id категории).</summary>
+/// <summary>Model input: description text and label (category Id).</summary>
 public sealed class TxInput
 {
     public string Description { get; set; } = "";
     public string Label { get; set; } = "";
 }
 
-/// <summary>Результат модели: предсказанная метка и вероятности по всем классам.</summary>
+/// <summary>Model output: the predicted label and probabilities for all classes.</summary>
 public sealed class TxPrediction
 {
     [ColumnName("PredictedLabel")]
@@ -23,10 +23,10 @@ public sealed class TxPrediction
 }
 
 /// <summary>
-/// Автокатегоризация операций.
-/// 1) ML.NET: многоклассовая классификация текста (FeaturizeText + SdcaMaximumEntropy),
-///    обучается на истории операций пользователя и ключевых словах категорий.
-/// 2) Если модель не уверена — поиск по ключевым словам.
+/// Transaction auto-categorization.
+/// 1) ML.NET: multiclass text classification (FeaturizeText + SdcaMaximumEntropy),
+///    trained on the user's transaction history and category keywords.
+/// 2) If the model is not confident — keyword matching.
 /// </summary>
 public sealed class CategorizationService(
     IDbContextFactory<AppDbContext> factory,
@@ -71,7 +71,7 @@ public sealed class CategorizationService(
             var labels = samples.Select(s => s.Label).Distinct().Count();
             if (labels < 2)
             {
-                logger.LogInformation("Недостаточно категорий для обучения модели");
+                logger.LogInformation("Not enough categories to train the model");
                 return;
             }
 
@@ -93,12 +93,12 @@ public sealed class CategorizationService(
             TrainedAt = DateTime.Now;
             TrainingSamples = samples.Count;
             LabelsCount = labels;
-            logger.LogInformation("Модель обучена: {Samples} примеров, {Labels} категорий", samples.Count, labels);
+            logger.LogInformation("Model trained: {Samples} samples, {Labels} categories", samples.Count, labels);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // Без модели приложение продолжит работать на ключевых словах
-            logger.LogError(ex, "Не удалось обучить модель категоризации");
+            // Without the model the app keeps working with keywords
+            logger.LogError(ex, "Failed to train the categorization model");
         }
         finally
         {
@@ -142,7 +142,7 @@ public sealed class CategorizationService(
         return byKeyword is null ? null : new CategorySuggestion(byKeyword.Id, 1f, SuggestionMethods.Keywords);
     }
 
-    /// <summary>Ищет категорию, ключевое слово которой встречается в тексте. Самое длинное совпадение побеждает.</summary>
+    /// <summary>Finds a category whose keyword occurs in the text. The longest match wins.</summary>
     public static Category? KeywordMatch(string text, IEnumerable<Category> candidates)
     {
         var normalized = Normalize(text);

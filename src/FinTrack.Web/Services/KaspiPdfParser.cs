@@ -6,15 +6,15 @@ using UglyToad.PdfPig.Content;
 namespace FinTrack.Web.Services;
 
 /// <summary>
-/// Разбор PDF-выписки Kaspi Gold.
-/// 1) PdfPig достаёт из PDF слова с координатами.
-/// 2) Слова с одинаковой высотой (Y) собираются в строки, слева направо.
-/// 3) Строки операций распознаются регулярным выражением:
+/// Kaspi Gold PDF statement parser.
+/// 1) PdfPig extracts words with coordinates from the PDF.
+/// 2) Words at the same height (Y) are joined into lines, left to right.
+/// 3) Transaction lines are recognized with a regular expression:
 ///    "14.11.26 - 4 309,00 ₸ Покупка YANDEX.EDA".
 /// </summary>
 public static partial class KaspiPdfParser
 {
-    /// <summary>Дата · знак · сумма · ₸ · тип операции · детали.</summary>
+    /// <summary>Date · sign · amount · ₸ · operation type · details.</summary>
     [GeneratedRegex(@"^(\d{2}\.\d{2}\.\d{2})\s+([+-])\s*(\d[\d\s]*,\d{2})\s*₸\s+(\S+)\s+(.+)$")]
     private static partial Regex OperationLine();
 
@@ -29,13 +29,13 @@ public static partial class KaspiPdfParser
         }
         catch (Exception ex)
         {
-            return ImportParseResult.Fatal($"Не удалось прочитать PDF: {ex.Message}");
+            return ImportParseResult.Fatal($"Could not read the PDF: {ex.Message}");
         }
 
         return ParseLines(lines);
     }
 
-    /// <summary>Распознаёт операции в уже извлечённых строках текста (отдельно — чтобы легко тестировать).</summary>
+    /// <summary>Recognizes transactions in already extracted text lines (kept separate for easy testing).</summary>
     public static ImportParseResult ParseLines(IEnumerable<string> lines)
     {
         var rows = new List<ImportRow>();
@@ -56,12 +56,12 @@ public static partial class KaspiPdfParser
             string? error = null;
             DateTime? date = DateTime.TryParseExact(dateText, "dd.MM.yy", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var d) ? d : null;
-            if (date is null) error = $"Не удалось распознать дату «{dateText}».";
+            if (date is null) error = $"Could not parse date \"{dateText}\".";
 
             if (!Money.TryParse(sign + amountText, out var amount) || amount == 0)
-                error ??= $"Не удалось распознать сумму «{sign}{amountText}».";
+                error ??= $"Could not parse amount \"{sign}{amountText}\".";
 
-            // Для покупок достаточно названия магазина, для остального добавляем тип: «Перевод Азамат Б.»
+            // For purchases ("Покупка") the merchant name is enough; otherwise prepend the type, e.g. "Перевод Азамат Б."
             var description = operation == "Покупка" ? details : $"{operation} {details}";
             if (description.Length > TransactionValidator.MaxDescription)
                 description = description[..TransactionValidator.MaxDescription];
@@ -80,7 +80,7 @@ public static partial class KaspiPdfParser
         }
 
         return rows.Count == 0
-            ? ImportParseResult.Fatal("В PDF не найдено операций. Поддерживается выписка Kaspi Gold (текстовый PDF, не скан).")
+            ? ImportParseResult.Fatal("No transactions found in the PDF. Kaspi Gold statements are supported (text PDF, not a scan).")
             : new ImportParseResult(rows, null);
     }
 
@@ -91,7 +91,7 @@ public static partial class KaspiPdfParser
 
         foreach (var page in document.GetPages())
         {
-            // Группируем слова по вертикали: одинаковый Bottom (с допуском) — одна строка
+            // Group words vertically: the same Bottom (within tolerance) means one line
             var groups = new List<(double Y, List<Word> Words)>();
             foreach (var word in page.GetWords())
             {
@@ -101,7 +101,7 @@ public static partial class KaspiPdfParser
                 else groups[index].Words.Add(word);
             }
 
-            // В PDF ось Y направлена вверх: сверху вниз = по убыванию Y
+            // In PDF the Y axis points up: top to bottom = descending Y
             foreach (var group in groups.OrderByDescending(g => g.Y))
                 result.Add(string.Join(' ', group.Words.OrderBy(w => w.BoundingBox.Left).Select(w => w.Text)));
         }

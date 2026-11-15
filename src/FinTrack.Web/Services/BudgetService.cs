@@ -37,13 +37,13 @@ public sealed class BudgetService(IDbContextFactory<AppDbContext> factory, INoti
 
     public async Task<Result> SaveAsync(Guid categoryId, int year, int month, decimal limit)
     {
-        if (limit <= 0) return Result.Fail("Лимит должен быть больше нуля.");
-        if (month is < 1 or > 12) return Result.Fail("Некорректный месяц.");
+        if (limit <= 0) return Result.Fail("The limit must be greater than zero.");
+        if (month is < 1 or > 12) return Result.Fail("Invalid month.");
 
         await using var db = await factory.CreateDbContextAsync();
         var category = await db.Categories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == categoryId);
-        if (category is null) return Result.Fail("Категория не найдена.");
-        if (category.Type != CategoryType.Expense) return Result.Fail("Лимит можно задать только для категории расходов.");
+        if (category is null) return Result.Fail("Category not found.");
+        if (category.Type != CategoryType.Expense) return Result.Fail("A limit can only be set for an expense category.");
 
         var existing = await db.Budgets.FirstOrDefaultAsync(b =>
             b.CategoryId == categoryId && b.Year == year && b.Month == month);
@@ -61,7 +61,7 @@ public sealed class BudgetService(IDbContextFactory<AppDbContext> factory, INoti
     {
         await using var db = await factory.CreateDbContextAsync();
         var budget = await db.Budgets.FirstOrDefaultAsync(b => b.Id == budgetId);
-        if (budget is null) return Result.Fail("Лимит не найден.");
+        if (budget is null) return Result.Fail("Limit not found.");
 
         db.Budgets.Remove(budget);
         await db.SaveChangesAsync();
@@ -76,7 +76,7 @@ public sealed class BudgetService(IDbContextFactory<AppDbContext> factory, INoti
 
         var previous = await db.Budgets.AsNoTracking()
             .Where(b => b.Year == prev.Year && b.Month == prev.Month).ToListAsync();
-        if (previous.Count == 0) return Result.Fail("В прошлом месяце лимитов не было.");
+        if (previous.Count == 0) return Result.Fail("There were no limits last month.");
 
         var existing = await db.Budgets.Where(b => b.Year == year && b.Month == month)
             .Select(b => b.CategoryId).ToListAsync();
@@ -84,7 +84,7 @@ public sealed class BudgetService(IDbContextFactory<AppDbContext> factory, INoti
         var toAdd = previous.Where(p => !existing.Contains(p.CategoryId))
             .Select(p => new Budget { CategoryId = p.CategoryId, Year = year, Month = month, Limit = p.Limit })
             .ToList();
-        if (toAdd.Count == 0) return Result.Fail("Все лимиты прошлого месяца уже есть.");
+        if (toAdd.Count == 0) return Result.Fail("All of last month's limits already exist.");
 
         db.Budgets.AddRange(toAdd);
         await db.SaveChangesAsync();

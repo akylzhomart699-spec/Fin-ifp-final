@@ -1,7 +1,7 @@
-@* Компактный список операций (для главной страницы). *@
+@* Compact transaction list (for the overview page). *@
 @if (Items.Count == 0)
 {
-    <EmptyState Icon="@Icons.Material.Filled.ReceiptLong" Text="Операций пока нет" />
+    <EmptyState Icon="@Icons.Material.Filled.ReceiptLong" Text="No transactions yet" />
 }
 else
 {
@@ -21,7 +21,7 @@ else
             @if (OnEdit.HasDelegate)
             {
                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit"
-                               OnClick="() => OnEdit.InvokeAsync(t)" aria-label="Изменить операцию" />
+                               OnClick="() => OnEdit.InvokeAsync(t)" aria-label="Edit transaction" />
             }
         </div>
     }

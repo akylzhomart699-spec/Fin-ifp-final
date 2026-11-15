@@ -38,8 +38,8 @@ public sealed record CategorySuggestion(Guid CategoryId, float Confidence, strin
 public static class SuggestionMethods
 {
     public const string Ml = "ML.NET";
-    public const string Keywords = "ключевые слова";
-    public const string Default = "по умолчанию";
+    public const string Keywords = "keywords";
+    public const string Default = "default";
 }
 
 public interface INotificationService
@@ -84,7 +84,7 @@ public interface IStatsService
 {
     Task<MonthSummary> GetMonthSummaryAsync(int year, int month, DateTime? today = null);
 
-    /// <summary>Итоги за календарный год: суммы, категории и все 12 месяцев.</summary>
+    /// <summary>Calendar-year totals: sums, categories and all 12 months.</summary>
     Task<MonthSummary> GetYearSummaryAsync(int year, DateTime? today = null);
 }
 
@@ -102,7 +102,7 @@ public interface ICategorizationService
 
 public interface ICsvImportService
 {
-    /// <summary>Разбирает файл выписки: CSV или PDF Kaspi (определяется по расширению).</summary>
+    /// <summary>Parses a statement file: CSV or Kaspi PDF (detected by extension).</summary>
     Task<ImportParseResult> ParseAsync(Stream stream, string fileName, CancellationToken ct = default);
     Task PrepareAsync(List<ImportRow> rows, CancellationToken ct = default);
     Task<Result> CommitAsync(IReadOnlyCollection<ImportRow> rows, Guid accountId);

@@ -3,16 +3,16 @@
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField T="string" @bind-Value="_model.Name" Label="Название" Required="true"
-                          RequiredError="Введите название" MaxLength="60" AutoFocus="true" />
+            <MudTextField T="string" @bind-Value="_model.Name" Label="Name" Required="true"
+                          RequiredError="Enter a name" MaxLength="60" AutoFocus="true" />
 
-            <MudSelect T="CategoryType" @bind-Value="_model.Type" Label="Тип" Class="mt-3"
+            <MudSelect T="CategoryType" @bind-Value="_model.Type" Label="Type" Class="mt-3"
                        ToStringFunc="CategoryPresets.TypeName" AnchorOrigin="Origin.BottomCenter">
-                <MudSelectItem T="CategoryType" Value="CategoryType.Expense">Расход</MudSelectItem>
-                <MudSelectItem T="CategoryType" Value="CategoryType.Income">Доход</MudSelectItem>
+                <MudSelectItem T="CategoryType" Value="CategoryType.Expense">Expense</MudSelectItem>
+                <MudSelectItem T="CategoryType" Value="CategoryType.Income">Income</MudSelectItem>
             </MudSelect>
 
-            <MudSelect T="string" @bind-Value="_model.Color" Label="Цвет" Class="mt-3" AnchorOrigin="Origin.BottomCenter">
+            <MudSelect T="string" @bind-Value="_model.Color" Label="Color" Class="mt-3" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var color in CategoryPresets.Colors)
                 {
                     <MudSelectItem T="string" Value="@color">
@@ -21,7 +21,7 @@
                 }
             </MudSelect>
 
-            <MudSelect T="string" @bind-Value="_model.Icon" Label="Иконка" Class="mt-3"
+            <MudSelect T="string" @bind-Value="_model.Icon" Label="Icon" Class="mt-3"
                        ToStringFunc="CategoryPresets.IconName" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var (name, icon) in CategoryPresets.IconList)
                 {
@@ -31,8 +31,8 @@
                 }
             </MudSelect>
 
-            <MudTextField T="string" @bind-Value="_model.Keywords" Label="Ключевые слова" Class="mt-3" Lines="2"
-                          HelperText="Через запятую, например: magnum, small. Помогают автокатегоризации." />
+            <MudTextField T="string" @bind-Value="_model.Keywords" Label="Keywords" Class="mt-3" Lines="2"
+                          HelperText="Comma-separated, e.g.: magnum, small. They help auto-categorization." />
         </MudForm>
         @if (_error is not null)
         {
@@ -40,8 +40,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Отмена</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Сохранить</MudButton>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -57,7 +57,7 @@
 
     protected override void OnInitialized()
     {
-        // Работаем с копией, чтобы «Отмена» не меняла исходный объект
+        // Work on a copy so that "Cancel" does not modify the original object
         _model = Existing is null
             ? new Category { Type = DefaultType, Color = CategoryPresets.Colors[0], Icon = CategoryPresets.IconList[^1].Icon }
             : new Category

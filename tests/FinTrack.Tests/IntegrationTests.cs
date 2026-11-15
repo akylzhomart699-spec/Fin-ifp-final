@@ -7,7 +7,7 @@ using Xunit;
 
 namespace FinTrack.Tests;
 
-/// <summary>Интеграционные тесты сервисов на настоящей SQLite-базе в памяти.</summary>
+/// <summary>Service integration tests against a real in-memory SQLite database.</summary>
 public class ServiceIntegrationTests : IDisposable
 {
     private readonly TestDb _db = new();
@@ -21,8 +21,8 @@ public class ServiceIntegrationTests : IDisposable
     {
         await using var ctx = _db.CreateContext();
         var account = new Account { Name = "Kaspi", InitialBalance = 10_000 };
-        var food = new Category { Name = "Продукты", Type = CategoryType.Expense, Keywords = "magnum" };
-        var salary = new Category { Name = "Зарплата", Type = CategoryType.Income };
+        var food = new Category { Name = "Groceries", Type = CategoryType.Expense, Keywords = "magnum" };
+        var salary = new Category { Name = "Salary", Type = CategoryType.Income };
         ctx.AddRange(account, food, salary);
         await ctx.SaveChangesAsync();
         return (account, food, salary);
@@ -33,7 +33,7 @@ public class ServiceIntegrationTests : IDisposable
     {
         var (account, food, salary) = await SeedBasicsAsync();
         await Transactions.SaveAsync(new Transaction { Amount = 3_000, Description = "Magnum", AccountId = account.Id, CategoryId = food.Id });
-        await Transactions.SaveAsync(new Transaction { Amount = 50_000, Description = "Зарплата", AccountId = account.Id, CategoryId = salary.Id });
+        await Transactions.SaveAsync(new Transaction { Amount = 50_000, Description = "Salary", AccountId = account.Id, CategoryId = salary.Id });
 
         var balance = Assert.Single(await Accounts.GetWithBalancesAsync()).Balance;
         Assert.Equal(10_000m - 3_000m + 50_000m, balance);
@@ -54,7 +54,7 @@ public class ServiceIntegrationTests : IDisposable
         Assert.True(result.Ok);
         var alert = Assert.Single(_notifications.Alerts);
         Assert.True(alert.Exceeded);
-        Assert.Contains("Продукты", alert.Message);
+        Assert.Contains("Groceries", alert.Message);
         Assert.True(_notifications.DataChangedCount >= 1);
     }
 
@@ -106,7 +106,7 @@ public class ServiceIntegrationTests : IDisposable
 
         var categorizer = new CategorizationService(_db.Factory, NullLogger<CategorizationService>.Instance);
         var importer = new CsvImportService(_db.Factory, categorizer, Transactions, NullLogger<CsvImportService>.Instance);
-        var parsed = CsvImportService.ParseText("Дата;Описание;Сумма\n01.11.2026;Magnum;-1000\n02.11.2026;Magnum Small;-2000\n");
+        var parsed = CsvImportService.ParseText("Date;Description;Amount\n01.11.2026;Magnum;-1000\n02.11.2026;Magnum Small;-2000\n");
         await importer.PrepareAsync(parsed.Rows);
 
         Assert.True(parsed.Rows[0].IsDuplicate);
@@ -128,12 +128,12 @@ public class ServiceIntegrationTests : IDisposable
         await categorizer.TrainAsync();
         Assert.True(categorizer.IsModelReady);
 
-        var suggestion = await categorizer.SuggestAsync("Magnum Cash&Carry Астана", CategoryType.Expense);
+        var suggestion = await categorizer.SuggestAsync("Magnum Cash&Carry Astana", CategoryType.Expense);
         Assert.NotNull(suggestion);
 
         await using var check = _db.CreateContext();
         var category = await check.Categories.FirstAsync(c => c.Id == suggestion!.CategoryId);
-        Assert.Equal("Продукты", category.Name);
+        Assert.Equal("Groceries", category.Name);
     }
 
     public void Dispose() => _db.Dispose();

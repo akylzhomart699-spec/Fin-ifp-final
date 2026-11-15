@@ -18,7 +18,7 @@ public sealed class AccountService(IDbContextFactory<AppDbContext> factory, INot
         await using var db = await factory.CreateDbContextAsync();
         var accounts = await db.Accounts.AsNoTracking().OrderBy(a => a.Name).ToListAsync();
 
-        // SQLite не умеет агрегировать decimal на сервере, поэтому суммируем в памяти
+        // SQLite can't aggregate decimal on the server, so we sum in memory
         var moves = await db.Transactions.AsNoTracking()
             .Select(t => new { t.AccountId, t.Amount, t.Category!.Type })
             .ToListAsync();
@@ -35,12 +35,12 @@ public sealed class AccountService(IDbContextFactory<AppDbContext> factory, INot
     public async Task<Result> SaveAsync(Account input)
     {
         var name = input.Name?.Trim() ?? "";
-        if (name.Length == 0) return Result.Fail("Введите название счёта.");
-        if (name.Length > 100) return Result.Fail("Название не длиннее 100 символов.");
+        if (name.Length == 0) return Result.Fail("Enter an account name.");
+        if (name.Length > 100) return Result.Fail("The name must be 100 characters or fewer.");
 
         await using var db = await factory.CreateDbContextAsync();
         if (await db.Accounts.AnyAsync(a => a.Name == name && a.Id != input.Id))
-            return Result.Fail("Счёт с таким названием уже есть.");
+            return Result.Fail("An account with this name already exists.");
 
         var existing = await db.Accounts.FirstOrDefaultAsync(a => a.Id == input.Id);
         if (existing is null)
@@ -62,10 +62,10 @@ public sealed class AccountService(IDbContextFactory<AppDbContext> factory, INot
     {
         await using var db = await factory.CreateDbContextAsync();
         if (await db.Accounts.CountAsync() <= 1)
-            return Result.Fail("Должен остаться хотя бы один счёт.");
+            return Result.Fail("At least one account must remain.");
 
         var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == id);
-        if (account is null) return Result.Fail("Счёт не найден.");
+        if (account is null) return Result.Fail("Account not found.");
 
         db.Accounts.Remove(account);
         await db.SaveChangesAsync();

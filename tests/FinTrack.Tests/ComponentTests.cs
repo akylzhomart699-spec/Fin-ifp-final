@@ -7,7 +7,7 @@ using Xunit;
 
 namespace FinTrack.Tests;
 
-/// <summary>Тесты Blazor-компонентов через bUnit.</summary>
+/// <summary>Blazor component tests with bUnit.</summary>
 public class ComponentTests : TestContext
 {
     public ComponentTests()
@@ -38,20 +38,20 @@ public class ComponentTests : TestContext
     [Fact]
     public void BudgetProgress_ShowsExceededText()
     {
-        var status = new BudgetStatus(new Budget { Limit = 10_000 }, new Category { Name = "Кафе", Color = "#E76F51" }, 12_000);
+        var status = new BudgetStatus(new Budget { Limit = 10_000 }, new Category { Name = "Cafe", Color = "#E76F51" }, 12_000);
         var cut = RenderComponent<BudgetProgress>(p => p.Add(x => x.Status, status));
 
-        Assert.Contains("Кафе", cut.Markup);
-        Assert.Contains("Превышено на 2 000 ₸", cut.Find(".budget-remaining").TextContent);
+        Assert.Contains("Cafe", cut.Markup);
+        Assert.Contains("Over by 2 000 ₸", cut.Find(".budget-remaining").TextContent);
     }
 
     [Fact]
     public void BudgetProgress_ShowsRemaining()
     {
-        var status = new BudgetStatus(new Budget { Limit = 10_000 }, new Category { Name = "Кафе" }, 4_000);
+        var status = new BudgetStatus(new Budget { Limit = 10_000 }, new Category { Name = "Cafe" }, 4_000);
         var cut = RenderComponent<BudgetProgress>(p => p.Add(x => x.Status, status));
 
-        Assert.Contains("Осталось 6 000 ₸", cut.Find(".budget-remaining").TextContent);
+        Assert.Contains("6 000 ₸ left", cut.Find(".budget-remaining").TextContent);
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public class ComponentTests : TestContext
         var cut = RenderComponent<EntityGrid<string>>(p => p
             .Add(x => x.Items, Array.Empty<string>())
             .Add(x => x.ItemTemplate, item => item)
-            .Add(x => x.EmptyText, "Нет данных"));
+            .Add(x => x.EmptyText, "No data"));
 
-        Assert.Contains("Нет данных", cut.Markup);
+        Assert.Contains("No data", cut.Markup);
     }
 }

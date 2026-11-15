@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Tests;
 
-/// <summary>SQLite в памяти: настоящая реляционная БД без файлов, создаётся на каждый тест.</summary>
+/// <summary>In-memory SQLite: a real relational database without files, created per test.</summary>
 public sealed class TestDb : IDisposable
 {
     private readonly SqliteConnection _connection;
@@ -33,7 +33,7 @@ public sealed class TestDb : IDisposable
     }
 }
 
-/// <summary>Подменяет SignalR: запоминает, какие уведомления были бы отправлены.</summary>
+/// <summary>Replaces SignalR: records which notifications would have been sent.</summary>
 public sealed class FakeNotifications : INotificationService
 {
     public List<(string Message, bool Exceeded)> Alerts { get; } = new();

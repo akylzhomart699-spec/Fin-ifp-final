@@ -5,21 +5,21 @@
 @inject ICategoryService Categories
 @inject ISnackbar Snackbar
 
-<PageTitle>Импорт выписки — FinTrack</PageTitle>
+<PageTitle>Import statement — FinTrack</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Импорт выписки</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">Import statement</MudText>
 
 <MudGrid Spacing="3">
     <MudItem xs="12" md="8">
         <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
-            <MudText Typo="Typo.h6" Class="mb-1">1. Выберите счёт и файл</MudText>
+            <MudText Typo="Typo.h6" Class="mb-1">1. Choose an account and a file</MudText>
             <MudText Typo="Typo.body2" Class="mb-3 mud-text-secondary">
-                <b>PDF-выписка Kaspi Gold</b> — как скачали из приложения Kaspi.kz (Kaspi Gold → Выписка).
-                Или CSV с колонками «Дата», «Описание», «Сумма» (расход — со знаком минус).
-                <MudLink Href="sample-statement.csv" Target="_blank">Скачать пример файла</MudLink>
+                <b>Kaspi Gold PDF statement</b> — as downloaded from the Kaspi.kz app (Kaspi Gold → Statement).
+                Or a CSV with "Date", "Description", "Amount" columns (expenses with a minus sign).
+                <MudLink Href="sample-statement.csv" Target="_blank">Download a sample file</MudLink>
             </MudText>
 
-            <MudSelect T="Guid" @bind-Value="_accountId" Label="Счёт, на который загрузить" Class="mb-4"
+            <MudSelect T="Guid" @bind-Value="_accountId" Label="Account to import into" Class="mb-4"
                        ToStringFunc="AccountName" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var a in _accounts)
                 {
@@ -29,8 +29,8 @@
 
             <div class="file-drop">
                 <MudIcon Icon="@Icons.Material.Filled.UploadFile" Size="Size.Large" Color="Color.Primary" />
-                <MudText Typo="Typo.body2">Выберите PDF или CSV (до 10 МБ)</MudText>
-                <InputFile OnChange="OnFileSelected" accept=".pdf,.csv,application/pdf,text/csv" aria-label="Файл выписки" />
+                <MudText Typo="Typo.body2">Choose a PDF or CSV (up to 10 MB)</MudText>
+                <InputFile OnChange="OnFileSelected" accept=".pdf,.csv,application/pdf,text/csv" aria-label="Statement file" />
             </div>
 
             @if (_parsing)
@@ -48,24 +48,24 @@
         <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
             <div class="d-flex align-center mb-2">
                 <MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Primary" Class="mr-2" />
-                <MudText Typo="Typo.h6">Модель ML.NET</MudText>
+                <MudText Typo="Typo.h6">ML.NET model</MudText>
             </div>
             @if (Categorizer.IsModelReady)
             {
-                <MudText Typo="Typo.body2">Обучена: @Categorizer.TrainedAt?.ToString("dd.MM.yyyy HH:mm")</MudText>
-                <MudText Typo="Typo.body2">Примеров: @Categorizer.TrainingSamples, категорий: @Categorizer.LabelsCount</MudText>
+                <MudText Typo="Typo.body2">Trained: @Categorizer.TrainedAt?.ToString("dd.MM.yyyy HH:mm")</MudText>
+                <MudText Typo="Typo.body2">Samples: @Categorizer.TrainingSamples, categories: @Categorizer.LabelsCount</MudText>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">
-                    Модель учится на ваших операциях. Если она не уверена (меньше @((CategorizationService.MinConfidence * 100).ToString("0"))%),
-                    используются ключевые слова категорий.
+                    The model learns from your transactions. If it is not confident (below @((CategorizationService.MinConfidence * 100).ToString("0"))%),
+                    category keywords are used.
                 </MudText>
             }
             else
             {
-                <MudText Typo="Typo.body2">Модель ещё не обучена — используются ключевые слова.</MudText>
+                <MudText Typo="Typo.body2">The model is not trained yet — keywords are used.</MudText>
             }
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Class="mt-3"
                        OnClick="RetrainAsync" Disabled="_training">
-                @(_training ? "Обучение..." : "Переобучить")
+                @(_training ? "Training..." : "Retrain")
             </MudButton>
         </MudPaper>
     </MudItem>
@@ -75,55 +75,55 @@
 {
     <MudPaper Elevation="1" Class="pa-4 mt-4">
         <div class="d-flex align-center flex-wrap gap-2 mb-2">
-            <MudText Typo="Typo.h6" Class="flex-grow-1">2. Проверьте операции</MudText>
+            <MudText Typo="Typo.h6" Class="flex-grow-1">2. Review transactions</MudText>
             <MudText Typo="Typo.body2">
-                Выбрано: <b>@SelectedCount</b> из @_rows.Count · ошибок: @(_rows.Count(r => r.Error is not null))
-                · дубликатов: @(_rows.Count(r => r.IsDuplicate))
+                Selected: <b>@SelectedCount</b> of @_rows.Count · errors: @(_rows.Count(r => r.Error is not null))
+                · duplicates: @(_rows.Count(r => r.IsDuplicate))
             </MudText>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Выбор строк">
+        <div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Row selection">
             <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DoneAll"
-                       OnClick="() => SetAll(true)">Выбрать все</MudButton>
+                       OnClick="() => SetAll(true)">Select all</MudButton>
             <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RemoveDone"
-                       OnClick="() => SetAll(false)">Снять все</MudButton>
+                       OnClick="() => SetAll(false)">Clear all</MudButton>
             <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FiberNew"
-                       OnClick="SelectNewOnly">Только новые</MudButton>
+                       OnClick="SelectNewOnly">New only</MudButton>
         </div>
         @if (_rows.Any(r => r.Include && r.IsDuplicate))
         {
             <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                Выбраны строки, которые уже есть в базе (@(_rows.Count(r => r.Include && r.IsDuplicate))). Они загрузятся повторно.
+                Selected rows already exist in the database (@(_rows.Count(r => r.Include && r.IsDuplicate))). They will be imported again.
             </MudAlert>
         }
 
         <MudTable Items="_rows" Dense="true" Hover="true" FixedHeader="true" Virtualize="true" Height="55vh"
                   Breakpoint="Breakpoint.Sm" Elevation="0" T="ImportRow">
             <HeaderContent>
-                <MudTh>Импорт</MudTh>
-                <MudTh>Дата</MudTh>
-                <MudTh>Описание</MudTh>
-                <MudTh>Сумма</MudTh>
-                <MudTh>Категория</MudTh>
+                <MudTh>Import</MudTh>
+                <MudTh>Date</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>Amount</MudTh>
+                <MudTh>Category</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="Импорт">
+                <MudTd DataLabel="Import">
                     <MudCheckBox T="bool" @bind-Value="context.Include" Disabled="@(context.Error is not null)" Color="Color.Primary" />
                 </MudTd>
-                <MudTd DataLabel="Дата">@context.Date?.ToString("dd.MM.yyyy")</MudTd>
-                <MudTd DataLabel="Описание">
+                <MudTd DataLabel="Date">@context.Date?.ToString("dd.MM.yyyy")</MudTd>
+                <MudTd DataLabel="Description">
                     @context.Description
                     @if (context.Error is not null)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block">Строка @context.Line: @context.Error</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block">Line @context.Line: @context.Error</MudText>
                     }
                     else if (context.IsDuplicate)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="d-block">Похоже на дубликат — уже есть в базе</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="d-block">Looks like a duplicate — already in the database</MudText>
                     }
                 </MudTd>
-                <MudTd DataLabel="Сумма"><MoneyText Amount="context.Amount" ShowPlus="true" Colored="true" /></MudTd>
-                <MudTd DataLabel="Категория">
+                <MudTd DataLabel="Amount"><MoneyText Amount="context.Amount" ShowPlus="true" Colored="true" /></MudTd>
+                <MudTd DataLabel="Category">
                     @if (context.Error is null)
                     {
                         <MudSelect T="Guid?" @bind-Value="context.CategoryId" Dense="true" Margin="Margin.Dense"
@@ -143,10 +143,10 @@
         </MudTable>
 
         <div class="d-flex justify-end flex-wrap gap-2 mt-3">
-            <MudButton OnClick="Reset">Отмена</MudButton>
+            <MudButton OnClick="Reset">Cancel</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
                        OnClick="CommitAsync" Disabled="@(_saving || SelectedCount == 0)">
-                Импортировать (@SelectedCount)
+                Import (@SelectedCount)
             </MudButton>
         </div>
     </MudPaper>
@@ -172,7 +172,7 @@
         }
         catch (Exception ex)
         {
-            _fatal = $"Не удалось загрузить справочники: {ex.Message}";
+            _fatal = $"Could not load reference data: {ex.Message}";
         }
     }
 
@@ -190,7 +190,7 @@
         var file = e.File;
         if (file.Size > CsvImportService.MaxFileSize)
         {
-            _fatal = "Файл больше 10 МБ.";
+            _fatal = "The file is larger than 10 MB.";
             return;
         }
 
@@ -209,7 +209,7 @@
         }
         catch (Exception ex)
         {
-            _fatal = $"Не удалось прочитать файл: {ex.Message}";
+            _fatal = $"Could not read the file: {ex.Message}";
         }
         finally
         {
@@ -226,7 +226,7 @@
 
         if (result.Ok)
         {
-            Snackbar.Add($"Импортировано операций: {result.Count}. Модель дообучается в фоне.", Severity.Success);
+            Snackbar.Add($"Transactions imported: {result.Count}. The model is retraining in the background.", Severity.Success);
             _rows = null;
         }
         else
@@ -240,17 +240,17 @@
         _training = true;
         await Categorizer.TrainAsync();
         _training = false;
-        Snackbar.Add(Categorizer.IsModelReady ? "Модель переобучена" : "Не удалось обучить модель", Categorizer.IsModelReady ? Severity.Success : Severity.Warning);
+        Snackbar.Add(Categorizer.IsModelReady ? "Model retrained" : "Could not train the model", Categorizer.IsModelReady ? Severity.Success : Severity.Warning);
     }
 
-    /// <summary>Отметить или снять все строки без ошибок.</summary>
+    /// <summary>Select or clear all rows without errors.</summary>
     private void SetAll(bool include)
     {
         if (_rows is null) return;
         foreach (var row in _rows.Where(r => r.Error is null)) row.Include = include;
     }
 
-    /// <summary>Отметить только строки, которых ещё нет в базе.</summary>
+    /// <summary>Select only rows that are not yet in the database.</summary>
     private void SelectNewOnly()
     {
         if (_rows is null) return;

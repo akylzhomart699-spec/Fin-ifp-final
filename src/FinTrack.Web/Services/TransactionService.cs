@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Web.Services;
 
-/// <summary>Проверка операции перед сохранением. Чистая функция — легко тестировать.</summary>
+/// <summary>Validates a transaction before saving. A pure function — easy to test.</summary>
 public static class TransactionValidator
 {
     public const int MaxDescription = 300;
@@ -12,13 +12,13 @@ public static class TransactionValidator
     public static List<string> Validate(Transaction t)
     {
         var errors = new List<string>();
-        if (t.Amount <= 0) errors.Add("Сумма должна быть больше нуля.");
-        if (t.Amount > 1_000_000_000m) errors.Add("Слишком большая сумма.");
-        if (string.IsNullOrWhiteSpace(t.Description)) errors.Add("Добавьте описание.");
-        else if (t.Description.Length > MaxDescription) errors.Add($"Описание не длиннее {MaxDescription} символов.");
-        if (t.AccountId == Guid.Empty) errors.Add("Выберите счёт.");
-        if (t.CategoryId == Guid.Empty) errors.Add("Выберите категорию.");
-        if (t.Date.Year < 2000 || t.Date > DateTime.Today.AddYears(1)) errors.Add("Некорректная дата.");
+        if (t.Amount <= 0) errors.Add("Amount must be greater than zero.");
+        if (t.Amount > 1_000_000_000m) errors.Add("Amount is too large.");
+        if (string.IsNullOrWhiteSpace(t.Description)) errors.Add("Add a description.");
+        else if (t.Description.Length > MaxDescription) errors.Add($"Description must be {MaxDescription} characters or fewer.");
+        if (t.AccountId == Guid.Empty) errors.Add("Select an account.");
+        if (t.CategoryId == Guid.Empty) errors.Add("Select a category.");
+        if (t.Date.Year < 2000 || t.Date > DateTime.Today.AddYears(1)) errors.Add("Invalid date.");
         return errors;
     }
 }
@@ -46,7 +46,7 @@ public sealed class TransactionService(
             .ThenByDescending(t => t.CreatedAt)
             .ToListAsync();
 
-        // Поиск в памяти: LIKE в SQLite не учитывает регистр кириллицы
+        // In-memory search: SQLite LIKE isn't case-insensitive for Cyrillic
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var s = filter.Search.Trim();
@@ -66,8 +66,8 @@ public sealed class TransactionService(
 
         await using var db = await factory.CreateDbContextAsync();
         var category = await db.Categories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == input.CategoryId);
-        if (category is null) return Result.Fail("Категория не найдена.");
-        if (!await db.Accounts.AnyAsync(a => a.Id == input.AccountId)) return Result.Fail("Счёт не найден.");
+        if (category is null) return Result.Fail("Category not found.");
+        if (!await db.Accounts.AnyAsync(a => a.Id == input.AccountId)) return Result.Fail("Account not found.");
 
         var existing = await db.Transactions.FirstOrDefaultAsync(t => t.Id == input.Id);
         if (existing is null)
@@ -81,8 +81,8 @@ public sealed class TransactionService(
         }
         catch (DbUpdateException ex)
         {
-            logger.LogError(ex, "Ошибка сохранения операции");
-            return Result.Fail("Не удалось сохранить операцию. Попробуйте ещё раз.");
+            logger.LogError(ex, "Error saving transaction");
+            return Result.Fail("Could not save the transaction. Please try again.");
         }
 
         if (category.Type == CategoryType.Expense)
@@ -94,12 +94,12 @@ public sealed class TransactionService(
 
     public async Task<Result> AddRangeAsync(IReadOnlyList<Transaction> items)
     {
-        if (items.Count == 0) return Result.Fail("Нет операций для сохранения.");
+        if (items.Count == 0) return Result.Fail("No transactions to save.");
 
         for (var i = 0; i < items.Count; i++)
         {
             var errors = TransactionValidator.Validate(items[i]);
-            if (errors.Count > 0) return Result.Fail($"Операция {i + 1}: {string.Join(" ", errors)}");
+            if (errors.Count > 0) return Result.Fail($"Transaction {i + 1}: {string.Join(" ", errors)}");
         }
 
         await using var db = await factory.CreateDbContextAsync();
@@ -111,8 +111,8 @@ public sealed class TransactionService(
         }
         catch (DbUpdateException ex)
         {
-            logger.LogError(ex, "Ошибка пакетного сохранения");
-            return Result.Fail("Не удалось сохранить операции: проверьте счёт и категории.");
+            logger.LogError(ex, "Batch save error");
+            return Result.Fail("Could not save the transactions: check the account and categories.");
         }
 
         var categories = await db.Categories.AsNoTracking().ToDictionaryAsync(c => c.Id);
@@ -132,7 +132,7 @@ public sealed class TransactionService(
     {
         await using var db = await factory.CreateDbContextAsync();
         var entity = await db.Transactions.FirstOrDefaultAsync(t => t.Id == id);
-        if (entity is null) return Result.Fail("Операция не найдена.");
+        if (entity is null) return Result.Fail("Transaction not found.");
 
         db.Transactions.Remove(entity);
         await db.SaveChangesAsync();
@@ -147,11 +147,11 @@ public sealed class TransactionService(
 
         if (status.IsExceeded)
             await notifications.BudgetAlertAsync(
-                $"Бюджет «{category.Name}» превышен: {Money.Format(status.Spent)} из {Money.Format(status.Budget.Limit)}",
+                $"Budget \"{category.Name}\" exceeded: {Money.Format(status.Spent)} of {Money.Format(status.Budget.Limit)}",
                 exceeded: true);
         else if (status.IsWarning)
             await notifications.BudgetAlertAsync(
-                $"Бюджет «{category.Name}» израсходован на {status.Percent:0}%",
+                $"Budget \"{category.Name}\" is {status.Percent:0}% spent",
                 exceeded: false);
     }
 

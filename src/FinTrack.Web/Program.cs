@@ -16,7 +16,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.VisibleStateDuration = 5000;
 });
 
-// Данные: фабрика контекстов — безопасна для Blazor Server, где одна вкладка живёт долго
+// Data: a context factory is safe for Blazor Server, where a single tab lives for a long time
 var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=fintrack.db";
 builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite(connectionString));
 
@@ -24,7 +24,7 @@ builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite(connectionSt
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<INotificationService, SignalRNotificationService>();
 
-// Бизнес-логика (Dependency Inversion: страницы зависят от интерфейсов)
+// Business logic (Dependency Inversion: pages depend on interfaces)
 builder.Services.AddSingleton<ICategorizationService, CategorizationService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -38,8 +38,8 @@ var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
-    // HTTPS обеспечивает хостинг (Render) перед приложением, поэтому без UseHttpsRedirection —
-    // иначе за прокси получится бесконечный редирект
+    // HTTPS is terminated by the host (Render) in front of the app, so no UseHttpsRedirection —
+    // otherwise it causes an infinite redirect behind the proxy
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
@@ -49,7 +49,7 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Создание БД, демо-данные и первое обучение модели
+// Create the database, seed demo data and train the model for the first time
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();

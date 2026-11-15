@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace FinTrack.Web.Hubs;
 
-/// <summary>SignalR-хаб: рассылает уведомления о бюджете и сигнал «данные изменились» всем открытым клиентам.</summary>
+/// <summary>SignalR hub: broadcasts budget alerts and a "data changed" signal to all open clients.</summary>
 public sealed class NotificationHub : Hub
 {
 }
@@ -31,8 +31,8 @@ public sealed class SignalRNotificationService(
         }
         catch (Exception ex)
         {
-            // Уведомление — не критичная часть: ошибка не должна ломать сохранение данных
-            logger.LogWarning(ex, "Не удалось отправить SignalR-событие {Method}", method);
+            // Notifications are non-critical: a failure must not break saving data
+            logger.LogWarning(ex, "Failed to send SignalR event {Method}", method);
         }
     }
 }

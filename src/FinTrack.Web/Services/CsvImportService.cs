@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Web.Services;
 
-/// <summary>Строка выписки после разбора. Amount со знаком: минус — расход.</summary>
+/// <summary>A parsed statement row. Amount is signed: minus means expense.</summary>
 public sealed class ImportRow
 {
     public int Line { get; init; }
@@ -31,7 +31,7 @@ public sealed record ImportParseResult(List<ImportRow> Rows, string? FatalError)
     public static ImportParseResult Fatal(string error) => new(new List<ImportRow>(), error);
 }
 
-/// <summary>Импорт банковской выписки (CSV или PDF Kaspi): разбор, автокатегории, поиск дубликатов, сохранение.</summary>
+/// <summary>Bank statement import (CSV or Kaspi PDF): parsing, auto-categorization, duplicate detection, saving.</summary>
 public sealed class CsvImportService(
     IDbContextFactory<AppDbContext> factory,
     ICategorizationService categorizer,
@@ -41,7 +41,7 @@ public sealed class CsvImportService(
     public const long MaxFileSize = 10 * 1024 * 1024;
     public const int MaxRows = 5000;
 
-    private static readonly string[] DateHeaders = ["дата", "date", "дата операции", "дата транзакции"];
+    private static readonly string[] DateHeaders = ["дата", "date", "дата операции", "дата транзакции", "transaction date"];
     private static readonly string[] DescriptionHeaders = ["описание", "description", "детали", "назначение", "details", "merchant", "получатель"];
     private static readonly string[] AmountHeaders = ["сумма", "amount", "sum"];
     private static readonly string[] DateFormats =
@@ -51,7 +51,7 @@ public sealed class CsvImportService(
     {
         if (Path.GetExtension(fileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            // Поток из браузера нельзя перематывать, а PdfPig нужен произвольный доступ — копируем в память
+            // The browser stream can't seek, but PdfPig needs random access — copy it into memory
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer, ct);
             return KaspiPdfParser.Parse(buffer.ToArray());
@@ -62,10 +62,10 @@ public sealed class CsvImportService(
         return ParseText(text);
     }
 
-    /// <summary>Разбирает CSV-текст. Разделитель (',' или ';') определяется автоматически.</summary>
+    /// <summary>Parses CSV text. The delimiter (',' or ';') is detected automatically.</summary>
     public static ImportParseResult ParseText(string text)
     {
-        if (string.IsNullOrWhiteSpace(text)) return ImportParseResult.Fatal("Файл пустой.");
+        if (string.IsNullOrWhiteSpace(text)) return ImportParseResult.Fatal("The file is empty.");
 
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -81,7 +81,7 @@ public sealed class CsvImportService(
         {
             using var csv = new CsvReader(new StringReader(text), config);
             if (!csv.Read() || !csv.ReadHeader() || csv.HeaderRecord is null)
-                return ImportParseResult.Fatal("Не найдена строка с заголовками колонок.");
+                return ImportParseResult.Fatal("Column header row not found.");
 
             var headers = csv.HeaderRecord.Select(h => h.Trim().ToLowerInvariant()).ToArray();
             var dateIdx = FindColumn(headers, DateHeaders);
@@ -89,7 +89,7 @@ public sealed class CsvImportService(
             var amountIdx = FindColumn(headers, AmountHeaders);
             if (dateIdx < 0 || descIdx < 0 || amountIdx < 0)
                 return ImportParseResult.Fatal(
-                    $"Нужны колонки «Дата», «Описание», «Сумма». В файле: {string.Join(", ", csv.HeaderRecord)}.");
+                    $"Columns \"Date\", \"Description\", \"Amount\" are required. Found in file: {string.Join(", ", csv.HeaderRecord)}.");
 
             var rows = new List<ImportRow>();
             while (csv.Read() && rows.Count < MaxRows)
@@ -100,10 +100,10 @@ public sealed class CsvImportService(
 
                 string? error = null;
                 DateTime? date = TryParseDate(rawDate, out var d) ? d : null;
-                if (date is null) error = $"Не удалось распознать дату «{rawDate}».";
+                if (date is null) error = $"Could not parse date \"{rawDate}\".";
                 if (!Money.TryParse(rawAmount, out var amount) || amount == 0)
-                    error ??= $"Не удалось распознать сумму «{rawAmount}».";
-                if (description.Length == 0) error ??= "Пустое описание.";
+                    error ??= $"Could not parse amount \"{rawAmount}\".";
+                if (description.Length == 0) error ??= "Empty description.";
                 if (description.Length > TransactionValidator.MaxDescription)
                     description = description[..TransactionValidator.MaxDescription];
 
@@ -119,12 +119,12 @@ public sealed class CsvImportService(
             }
 
             return rows.Count == 0
-                ? ImportParseResult.Fatal("В файле нет строк с операциями.")
+                ? ImportParseResult.Fatal("The file contains no transaction rows.")
                 : new ImportParseResult(rows, null);
         }
         catch (Exception ex) when (ex is CsvHelperException or FormatException)
         {
-            return ImportParseResult.Fatal($"Файл повреждён или не является CSV: {ex.Message}");
+            return ImportParseResult.Fatal($"The file is corrupted or is not a CSV: {ex.Message}");
         }
     }
 
@@ -162,7 +162,7 @@ public sealed class CsvImportService(
             }
             else
             {
-                var fallback = candidates.FirstOrDefault(c => c.Name == "Прочее") ?? candidates.FirstOrDefault();
+                var fallback = candidates.FirstOrDefault(c => c.Name is "Other" or "Прочее") ?? candidates.FirstOrDefault();
                 row.CategoryId = fallback?.Id;
                 row.Method = fallback is null ? null : SuggestionMethods.Default;
             }
@@ -171,7 +171,7 @@ public sealed class CsvImportService(
 
     public async Task<Result> CommitAsync(IReadOnlyCollection<ImportRow> rows, Guid accountId)
     {
-        if (accountId == Guid.Empty) return Result.Fail("Выберите счёт.");
+        if (accountId == Guid.Empty) return Result.Fail("Select an account.");
 
         var items = rows
             .Where(r => r.Include && r.Error is null && r.Date is not null && r.CategoryId is not null)
@@ -187,16 +187,16 @@ public sealed class CsvImportService(
             })
             .ToList();
 
-        if (items.Count == 0) return Result.Fail("Не выбрано ни одной строки для импорта.");
+        if (items.Count == 0) return Result.Fail("No rows selected for import.");
 
         var result = await transactions.AddRangeAsync(items);
         if (result.Ok)
         {
-            // Дообучаем модель на новых данных в фоне
+            // Retrain the model on the new data in the background
             _ = Task.Run(async () =>
             {
                 try { await categorizer.TrainAsync(); }
-                catch (Exception ex) { logger.LogWarning(ex, "Дообучение после импорта не удалось"); }
+                catch (Exception ex) { logger.LogWarning(ex, "Retraining after import failed"); }
             });
         }
         return result;

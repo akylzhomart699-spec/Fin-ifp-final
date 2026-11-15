@@ -3,9 +3,9 @@
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField T="string" @bind-Value="_name" Label="Название" Required="true" RequiredError="Введите название"
-                          MaxLength="100" AutoFocus="true" HelperText="Например: Kaspi Gold, Наличные, Депозит" />
-            <MudNumericField T="decimal" @bind-Value="_initial" Label="Начальный остаток, ₸" Class="mt-3" />
+            <MudTextField T="string" @bind-Value="_name" Label="Name" Required="true" RequiredError="Enter a name"
+                          MaxLength="100" AutoFocus="true" HelperText="For example: Kaspi Gold, Cash, Deposit" />
+            <MudNumericField T="decimal" @bind-Value="_initial" Label="Opening balance, ₸" Class="mt-3" />
         </MudForm>
         @if (_error is not null)
         {
@@ -13,8 +13,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Отмена</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Сохранить</MudButton>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">Save</MudButton>
     </DialogActions>
 </MudDialog>
 

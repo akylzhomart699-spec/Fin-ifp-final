@@ -1,4 +1,4 @@
-@* Карточка бюджета: прогресс трат по категории за месяц. *@
+@* Budget card: monthly spending progress for a category. *@
 <MudPaper Elevation="1" Class="pa-4">
     <div class="d-flex align-center">
         <span class="category-dot" style="background:@Status.Category.Color"></span>
@@ -6,18 +6,18 @@
         @if (OnEdit.HasDelegate)
         {
             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit"
-                           OnClick="() => OnEdit.InvokeAsync(Status)" aria-label="Изменить лимит" />
+                           OnClick="() => OnEdit.InvokeAsync(Status)" aria-label="Edit limit" />
         }
         @if (OnDelete.HasDelegate)
         {
             <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
-                           OnClick="() => OnDelete.InvokeAsync(Status)" aria-label="Удалить лимит" />
+                           OnClick="() => OnDelete.InvokeAsync(Status)" aria-label="Delete limit" />
         }
     </div>
     <MudProgressLinear Value="@Math.Min(Status.Percent, 100)" Color="@BarColor" Rounded="true" Size="Size.Medium"
-                       Class="my-2" aria-label="@($"Израсходовано {Status.Percent:0}%")" />
+                       Class="my-2" aria-label="@($"Spent {Status.Percent:0}%")" />
     <div class="d-flex justify-space-between flex-wrap">
-        <MudText Typo="Typo.body2">@Money.Format(Status.Spent) из @Money.Format(Status.Budget.Limit)</MudText>
+        <MudText Typo="Typo.body2">@Money.Format(Status.Spent) of @Money.Format(Status.Budget.Limit)</MudText>
         <MudText Typo="Typo.body2" Color="@TextColor" Class="budget-remaining">@RemainingText</MudText>
     </div>
 </MudPaper>
@@ -31,6 +31,6 @@
     private Color TextColor => Status.IsExceeded ? Color.Error : Status.IsWarning ? Color.Warning : Color.Default;
 
     private string RemainingText => Status.IsExceeded
-        ? $"Превышено на {Money.Format(-Status.Remaining)}"
-        : $"Осталось {Money.Format(Status.Remaining)}";
+        ? $"Over by {Money.Format(-Status.Remaining)}"
+        : $"{Money.Format(Status.Remaining)} left";
 }

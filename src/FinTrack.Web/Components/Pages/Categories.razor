@@ -3,21 +3,21 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 
-<PageTitle>Категории — FinTrack</PageTitle>
+<PageTitle>Categories — FinTrack</PageTitle>
 
 <div class="d-flex align-center flex-wrap gap-2 mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Категории</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Categories</MudText>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-               OnClick="() => EditAsync(null, CategoryType.Expense)">Добавить</MudButton>
+               OnClick="() => EditAsync(null, CategoryType.Expense)">Add</MudButton>
 </div>
 
-<MudText Typo="Typo.h6" Class="mb-2">Расходы</MudText>
-<EntityGrid Items="Expenses" EmptyText="Категорий расходов нет" Context="c">
+<MudText Typo="Typo.h6" Class="mb-2">Expenses</MudText>
+<EntityGrid Items="Expenses" EmptyText="No expense categories" Context="c">
     <ItemTemplate>@CategoryCard(c)</ItemTemplate>
 </EntityGrid>
 
-<MudText Typo="Typo.h6" Class="mt-6 mb-2">Доходы</MudText>
-<EntityGrid Items="Incomes" EmptyText="Категорий доходов нет" Context="c">
+<MudText Typo="Typo.h6" Class="mt-6 mb-2">Income</MudText>
+<EntityGrid Items="Incomes" EmptyText="No income categories" Context="c">
     <ItemTemplate>@CategoryCard(c)</ItemTemplate>
 </EntityGrid>
 
@@ -36,11 +36,11 @@
             <div class="flex-grow-1" style="min-width:0">
                 <MudText Typo="Typo.subtitle1">@c.Name</MudText>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate d-block">
-                    @(string.IsNullOrWhiteSpace(c.Keywords) ? "Без ключевых слов" : c.Keywords)
+                    @(string.IsNullOrWhiteSpace(c.Keywords) ? "No keywords" : c.Keywords)
                 </MudText>
             </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => EditAsync(c, c.Type)" aria-label="Изменить категорию" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(c)" aria-label="Удалить категорию" />
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => EditAsync(c, c.Type)" aria-label="Edit category" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAsync(c)" aria-label="Delete category" />
         </MudPaper>
     };
 
@@ -49,29 +49,29 @@
     private async Task LoadAsync()
     {
         try { _all = await CategoriesService.GetAllAsync(); }
-        catch (Exception ex) { Snackbar.Add($"Не удалось загрузить категории: {ex.Message}", Severity.Error); _all ??= new(); }
+        catch (Exception ex) { Snackbar.Add($"Could not load categories: {ex.Message}", Severity.Error); _all ??= new(); }
     }
 
     private async Task EditAsync(Category? category, CategoryType type)
     {
         var parameters = new DialogParameters { { "Existing", category }, { "DefaultType", type } };
-        var dialog = await Dialogs.ShowAsync<CategoryDialog>(category is null ? "Новая категория" : "Изменить категорию", parameters, DialogDefaults.Form);
+        var dialog = await Dialogs.ShowAsync<CategoryDialog>(category is null ? "New category" : "Edit category", parameters, DialogDefaults.Form);
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
-            Snackbar.Add("Категория сохранена. Модель ML.NET переобучается в фоне.", Severity.Success);
+            Snackbar.Add("Category saved. The ML.NET model is retraining in the background.", Severity.Success);
             await LoadAsync();
         }
     }
 
     private async Task DeleteAsync(Category category)
     {
-        bool? confirmed = await Dialogs.ShowMessageBox("Удалить категорию?", $"Категория «{category.Name}» будет удалена.",
-            yesText: "Удалить", cancelText: "Отмена");
+        bool? confirmed = await Dialogs.ShowMessageBox("Delete category?", $"Category \"{category.Name}\" will be deleted.",
+            yesText: "Delete", cancelText: "Cancel");
         if (confirmed != true) return;
 
         var result = await CategoriesService.DeleteAsync(category.Id);
-        Snackbar.Add(result.Ok ? "Категория удалена" : result.Error!, result.Ok ? Severity.Success : Severity.Error);
+        Snackbar.Add(result.Ok ? "Category deleted" : result.Error!, result.Ok ? Severity.Success : Severity.Error);
         if (result.Ok) await LoadAsync();
     }
 }

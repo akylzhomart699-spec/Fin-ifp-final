@@ -31,7 +31,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Date);
             e.HasOne(x => x.Account).WithMany(a => a.Transactions)
                 .HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
-            // Restrict: нельзя удалить категорию, пока в ней есть операции
+            // Restrict: a category cannot be deleted while it still has transactions
             e.HasOne(x => x.Category).WithMany()
                 .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
         });

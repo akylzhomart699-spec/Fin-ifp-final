@@ -15,16 +15,16 @@
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       OnClick="ToggleDrawer" aria-label="Открыть меню" />
+                       OnClick="ToggleDrawer" aria-label="Open menu" />
         <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Class="mr-2" />
         <MudText Typo="Typo.h6">FinTrack</MudText>
         <MudSpacer />
-        <MudTooltip Text="@(_hubConnected ? "Синхронизация в реальном времени включена" : "Нет связи с сервером уведомлений")">
+        <MudTooltip Text="@(_hubConnected ? "Real-time sync is on" : "No connection to the notification server")">
             <MudIcon Icon="@(_hubConnected ? Icons.Material.Filled.CloudDone : Icons.Material.Filled.CloudOff)"
-                     Class="mr-2" aria-label="Статус синхронизации" />
+                     Class="mr-2" aria-label="Sync status" />
         </MudTooltip>
         <MudIconButton Icon="@(State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit" OnClick="State.ToggleDarkMode" aria-label="Сменить тему" />
+                       Color="Color.Inherit" OnClick="State.ToggleDarkMode" aria-label="Toggle theme" />
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Responsive" Elevation="1">
@@ -39,8 +39,8 @@
                 </ChildContent>
                 <ErrorContent Context="ex">
                     <MudAlert Severity="Severity.Error" Class="my-4">
-                        Что-то пошло не так: @ex.Message
-                        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="Recover">Попробовать снова</MudButton>
+                        Something went wrong: @ex.Message
+                        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="Recover">Try again</MudButton>
                     </MudAlert>
                 </ErrorContent>
             </ErrorBoundary>
@@ -51,8 +51,8 @@
 <BottomNav />
 
 <div id="blazor-error-ui">
-    Произошла непредвиденная ошибка.
-    <a href="" class="reload">Перезагрузить</a>
+    An unexpected error has occurred.
+    <a href="" class="reload">Reload</a>
     <a class="dismiss">✕</a>
 </div>
 
@@ -109,8 +109,8 @@
         }
         catch (Exception ex)
         {
-            // Приложение работает и без SignalR — просто без живых уведомлений
-            Logger.LogWarning(ex, "Не удалось подключиться к хабу уведомлений");
+            // The app works without SignalR too — just without live notifications
+            Logger.LogWarning(ex, "Failed to connect to the notification hub");
             _hubConnected = false;
         }
         StateHasChanged();

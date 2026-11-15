@@ -11,22 +11,22 @@
         }
         else
         {
-            <div class="d-flex gap-2 mb-3" role="group" aria-label="Тип операции">
+            <div class="d-flex gap-2 mb-3" role="group" aria-label="Transaction type">
                 <MudButton Variant="@(_type == CategoryType.Expense ? Variant.Filled : Variant.Outlined)"
-                           Color="Color.Error" OnClick="() => SetType(CategoryType.Expense)">Расход</MudButton>
+                           Color="Color.Error" OnClick="() => SetType(CategoryType.Expense)">Expense</MudButton>
                 <MudButton Variant="@(_type == CategoryType.Income ? Variant.Filled : Variant.Outlined)"
-                           Color="Color.Success" OnClick="() => SetType(CategoryType.Income)">Доход</MudButton>
+                           Color="Color.Success" OnClick="() => SetType(CategoryType.Income)">Income</MudButton>
             </div>
 
             <MudForm @ref="_form">
-                <MudNumericField T="decimal" @bind-Value="_amount" Label="Сумма, ₸" Min="0" AutoFocus="true"
+                <MudNumericField T="decimal" @bind-Value="_amount" Label="Amount, ₸" Min="0" AutoFocus="true"
                                  Validation="@(new Func<decimal, string?>(ValidateAmount))" />
 
-                <MudTextField T="string" Value="_description" ValueChanged="OnDescriptionChanged" Label="Описание"
-                              Required="true" RequiredError="Добавьте описание" MaxLength="300" Class="mt-3"
+                <MudTextField T="string" Value="_description" ValueChanged="OnDescriptionChanged" Label="Description"
+                              Required="true" RequiredError="Add a description" MaxLength="300" Class="mt-3"
                               DebounceInterval="400" HelperText="@_suggestHint" />
 
-                <MudSelect T="Guid" Value="_categoryId" ValueChanged="OnCategoryPicked" Label="Категория" Class="mt-3"
+                <MudSelect T="Guid" Value="_categoryId" ValueChanged="OnCategoryPicked" Label="Category" Class="mt-3"
                            ToStringFunc="CategoryName" AnchorOrigin="Origin.BottomCenter">
                     @foreach (var c in _categories.Where(c => c.Type == _type))
                     {
@@ -36,7 +36,7 @@
                     }
                 </MudSelect>
 
-                <MudSelect T="Guid" @bind-Value="_accountId" Label="Счёт" Class="mt-3" ToStringFunc="AccountName"
+                <MudSelect T="Guid" @bind-Value="_accountId" Label="Account" Class="mt-3" ToStringFunc="AccountName"
                            AnchorOrigin="Origin.BottomCenter">
                     @foreach (var a in _accounts)
                     {
@@ -44,7 +44,7 @@
                     }
                 </MudSelect>
 
-                <MudDatePicker @bind-Date="_date" Label="Дата" DateFormat="dd.MM.yyyy" Class="mt-3" />
+                <MudDatePicker @bind-Date="_date" Label="Date" DateFormat="dd.MM.yyyy" Class="mt-3" />
             </MudForm>
 
             @if (_error is not null)
@@ -56,11 +56,11 @@
     <DialogActions>
         @if (Existing is not null)
         {
-            <MudButton Color="Color.Error" OnClick="DeleteAsync" Disabled="_saving" Class="mr-auto">Удалить</MudButton>
+            <MudButton Color="Color.Error" OnClick="DeleteAsync" Disabled="_saving" Class="mr-auto">Delete</MudButton>
         }
-        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving || _loading">
-            Сохранить
+            Save
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -68,7 +68,7 @@
 @code {
     [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
 
-    /// <summary>Операция для редактирования; null — новая.</summary>
+    /// <summary>Transaction to edit; null means a new one.</summary>
     [Parameter] public Transaction? Existing { get; set; }
 
     private MudForm _form = default!;
@@ -107,7 +107,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"Не удалось загрузить данные: {ex.Message}";
+            _error = $"Could not load data: {ex.Message}";
         }
         finally
         {
@@ -115,7 +115,7 @@
         }
     }
 
-    private string? ValidateAmount(decimal value) => value <= 0 ? "Сумма должна быть больше нуля" : null;
+    private string? ValidateAmount(decimal value) => value <= 0 ? "Amount must be greater than zero" : null;
 
     private string CategoryName(Guid id) => _categories.FirstOrDefault(c => c.Id == id)?.Name ?? "";
     private string AccountName(Guid id) => _accounts.FirstOrDefault(a => a.Id == id)?.Name ?? "";
@@ -143,7 +143,7 @@
         _suggestHint = null;
     }
 
-    /// <summary>Предлагает категорию по описанию (ML.NET или ключевые слова).</summary>
+    /// <summary>Suggests a category from the description (ML.NET or keywords).</summary>
     private async Task SuggestAsync()
     {
         if (string.IsNullOrWhiteSpace(_description)) return;
@@ -154,12 +154,12 @@
 
             _categoryId = _suggestion.CategoryId;
             _suggestHint = _suggestion.Method == SuggestionMethods.Ml
-                ? $"Категория предложена ML.NET (уверенность {_suggestion.Confidence * 100:0}%)"
-                : $"Категория предложена по ключевым словам";
+                ? $"Category suggested by ML.NET ({_suggestion.Confidence * 100:0}% confidence)"
+                : $"Category suggested by keywords";
         }
         catch
         {
-            // Подсказка не обязательна: при ошибке пользователь просто выберет категорию сам
+            // The suggestion is optional: on error the user simply picks the category manually
             _suggestHint = null;
         }
     }
@@ -169,8 +169,8 @@
         _error = null;
         await _form.Validate();
         if (!_form.IsValid) return;
-        if (_categoryId == Guid.Empty) { _error = "Выберите категорию."; return; }
-        if (_accountId == Guid.Empty) { _error = "Выберите счёт."; return; }
+        if (_categoryId == Guid.Empty) { _error = "Select a category."; return; }
+        if (_accountId == Guid.Empty) { _error = "Select an account."; return; }
 
         _saving = true;
         var fromMl = _suggestion?.Method == SuggestionMethods.Ml && _suggestion.CategoryId == _categoryId;

@@ -4,14 +4,14 @@ using MudBlazor;
 
 namespace FinTrack.Web.Services;
 
-/// <summary>Результат операции: успех или понятное пользователю сообщение об ошибке.</summary>
+/// <summary>Operation result: success or a user-friendly error message.</summary>
 public sealed record Result(bool Ok, string? Error = null, int Count = 0)
 {
     public static Result Success(int count = 0) => new(true, null, count);
     public static Result Fail(string error) => new(false, error);
 }
 
-/// <summary>Форматирование и разбор денежных сумм в тенге (не зависит от культуры ОС).</summary>
+/// <summary>Formatting and parsing of tenge amounts (independent of the OS culture).</summary>
 public static class Money
 {
     private static readonly NumberFormatInfo Nfi = new()
@@ -27,7 +27,7 @@ public static class Money
         return showPlus && amount > 0 ? "+" + text : text;
     }
 
-    /// <summary>Разбирает "-12 500,50 ₸", "1,234.56", "350000" и т. п.</summary>
+    /// <summary>Parses "-12 500,50 ₸", "1,234.56", "350000", etc.</summary>
     public static bool TryParse(string? raw, out decimal value)
     {
         value = 0;
@@ -41,7 +41,7 @@ public static class Money
         var lastDot = cleaned.LastIndexOf('.');
         if (lastComma >= 0 && lastDot >= 0)
         {
-            // Последний разделитель — десятичный, остальные — разделители тысяч
+            // The last separator is the decimal one; the others are thousands separators
             cleaned = lastComma > lastDot
                 ? cleaned.Replace(".", "").Replace(',', '.')
                 : cleaned.Replace(",", "");
@@ -59,13 +59,13 @@ public static class Money
 public static class MonthNames
 {
     public static readonly string[] Full =
-        ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     public static readonly string[] Short =
-        ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 }
 
-/// <summary>Готовые цвета и иконки для категорий.</summary>
+/// <summary>Preset colors and icons for categories.</summary>
 public static class CategoryPresets
 {
     public static readonly string[] Colors =
@@ -76,27 +76,27 @@ public static class CategoryPresets
 
     public static readonly (string Name, string Icon)[] IconList =
     [
-        ("Корзина", Icons.Material.Filled.ShoppingCart),
-        ("Кофе", Icons.Material.Filled.LocalCafe),
-        ("Машина", Icons.Material.Filled.DirectionsCar),
+        ("Cart", Icons.Material.Filled.ShoppingCart),
+        ("Coffee", Icons.Material.Filled.LocalCafe),
+        ("Car", Icons.Material.Filled.DirectionsCar),
         ("Wi-Fi", Icons.Material.Filled.Wifi),
-        ("Игры", Icons.Material.Filled.SportsEsports),
-        ("Одежда", Icons.Material.Filled.Checkroom),
-        ("Здоровье", Icons.Material.Filled.LocalHospital),
-        ("Учёба", Icons.Material.Filled.School),
-        ("Дом", Icons.Material.Filled.Home),
-        ("Работа", Icons.Material.Filled.Work),
-        ("Банк", Icons.Material.Filled.AccountBalance),
-        ("Перевод", Icons.Material.Filled.SwapHoriz),
-        ("Подарок", Icons.Material.Filled.CardGiftcard),
-        ("Путешествия", Icons.Material.Filled.Flight),
-        ("Другое", Icons.Material.Filled.MoreHoriz),
+        ("Games", Icons.Material.Filled.SportsEsports),
+        ("Clothing", Icons.Material.Filled.Checkroom),
+        ("Health", Icons.Material.Filled.LocalHospital),
+        ("Education", Icons.Material.Filled.School),
+        ("Home", Icons.Material.Filled.Home),
+        ("Work", Icons.Material.Filled.Work),
+        ("Bank", Icons.Material.Filled.AccountBalance),
+        ("Transfer", Icons.Material.Filled.SwapHoriz),
+        ("Gift", Icons.Material.Filled.CardGiftcard),
+        ("Travel", Icons.Material.Filled.Flight),
+        ("Other", Icons.Material.Filled.MoreHoriz),
     ];
 
     public static string IconName(string icon) =>
-        IconList.FirstOrDefault(i => i.Icon == icon).Name ?? "Иконка";
+        IconList.FirstOrDefault(i => i.Icon == icon).Name ?? "Icon";
 
-    public static string TypeName(CategoryType type) => type == CategoryType.Income ? "Доход" : "Расход";
+    public static string TypeName(CategoryType type) => type == CategoryType.Income ? "Income" : "Expense";
 }
 
 public static class DialogDefaults

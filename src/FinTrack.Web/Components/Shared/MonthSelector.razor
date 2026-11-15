@@ -2,11 +2,11 @@
 @inject AppState State
 
 <div class="d-flex align-center">
-    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="() => State.ShiftMonth(-1)" aria-label="Предыдущий месяц" />
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="() => State.ShiftMonth(-1)" aria-label="Previous month" />
     <MudText Typo="Typo.subtitle1" Style="min-width:140px;text-align:center">
         @MonthNames.Full[State.Month - 1] @State.Year
     </MudText>
-    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="() => State.ShiftMonth(1)" aria-label="Следующий месяц" />
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="() => State.ShiftMonth(1)" aria-label="Next month" />
 </div>
 
 @code {

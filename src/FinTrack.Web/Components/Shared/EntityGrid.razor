@@ -1,5 +1,5 @@
 @typeparam TItem
-@* Обобщённый (templated) компонент: адаптивная сетка карточек для любого типа данных. *@
+@* Generic (templated) component: a responsive card grid for any data type. *@
 
 @if (Items is null)
 {
@@ -24,6 +24,6 @@ else
 @code {
     [Parameter, EditorRequired] public IEnumerable<TItem>? Items { get; set; }
     [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = default!;
-    [Parameter] public string EmptyText { get; set; } = "Здесь пока пусто";
+    [Parameter] public string EmptyText { get; set; } = "Nothing here yet";
     [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Filled.Inbox;
 }

@@ -80,7 +80,7 @@ public sealed class StatsService(IDbContextFactory<AppDbContext> factory) : ISta
         return new MonthSummary(income, expense, forecast, byCategory, trend);
     }
 
-    /// <summary>Прогноз расходов на конец года при текущем темпе. Прошедший год — факт, будущий — 0.</summary>
+    /// <summary>Year-end spending forecast at the current pace. Past year — actual, future year — 0.</summary>
     public static decimal ForecastYearExpense(decimal spentSoFar, int year, DateTime today)
     {
         if (today.Year < year) return 0;
@@ -91,8 +91,8 @@ public sealed class StatsService(IDbContextFactory<AppDbContext> factory) : ISta
     }
 
     /// <summary>
-    /// Прогноз расходов на конец месяца: при текущем темпе трат.
-    /// Для прошедшего месяца — фактические расходы, для будущего — 0.
+    /// Month-end spending forecast at the current spending pace.
+    /// For a past month — actual spending; for a future month — 0.
     /// </summary>
     public static decimal ForecastExpense(decimal spentSoFar, DateTime monthStart, DateTime today)
     {

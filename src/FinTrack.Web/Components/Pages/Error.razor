@@ -2,11 +2,11 @@
 @using System.Diagnostics
 @using Microsoft.AspNetCore.Http
 
-<PageTitle>Ошибка — FinTrack</PageTitle>
+<PageTitle>Error — FinTrack</PageTitle>
 
 <MudAlert Severity="Severity.Error" Class="my-4">
-    <MudText Typo="Typo.h5">Ошибка</MudText>
-    <MudText>При обработке запроса произошла ошибка. Попробуйте обновить страницу.</MudText>
+    <MudText Typo="Typo.h5">Error</MudText>
+    <MudText>An error occurred while processing your request. Try refreshing the page.</MudText>
     @if (!string.IsNullOrEmpty(RequestId))
     {
         <MudText Typo="Typo.caption">Request ID: <code>@RequestId</code></MudText>

@@ -9,7 +9,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "lan (для телефона)": {
+    "lan (for phone)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

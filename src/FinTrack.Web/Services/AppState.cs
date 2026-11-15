@@ -1,8 +1,8 @@
 namespace FinTrack.Web.Services;
 
 /// <summary>
-/// Состояние интерфейса на одну вкладку (scoped): выбранный месяц и тема.
-/// Компоненты подписываются на OnChange и перерисовываются при изменениях.
+/// Per-tab UI state (scoped): the selected month and theme.
+/// Components subscribe to OnChange and re-render when it changes.
 /// </summary>
 public sealed class AppState
 {
@@ -34,7 +34,7 @@ public sealed class AppState
         Notify();
     }
 
-    /// <summary>Вызывается, когда данные изменились (в том числе с другого устройства через SignalR).</summary>
+    /// <summary>Called when data has changed (including from another device via SignalR).</summary>
     public void NotifyDataChanged() => Notify();
 
     private void Notify() => OnChange?.Invoke();

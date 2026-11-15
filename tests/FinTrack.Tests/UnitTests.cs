@@ -43,7 +43,7 @@ public class ForecastTests
     [Fact]
     public void CurrentMonth_ExtrapolatesByDays()
     {
-        // 10 000 ₸ за 10 дней 30-дневного месяца → 30 000 ₸
+        // 10 000 ₸ over 10 days of a 30-day month → 30 000 ₸
         var forecast = StatsService.ForecastExpense(10_000m, new DateTime(2026, 11, 1), new DateTime(2026, 11, 10));
         Assert.Equal(30_000m, forecast);
     }
@@ -55,7 +55,7 @@ public class ForecastTests
     [Fact]
     public void CurrentYear_ExtrapolatesByDayOfYear()
     {
-        // 73 000 ₸ за первые 73 дня 2026 года (365 дней) → 365 000 ₸
+        // 73 000 ₸ over the first 73 days of 2026 (365 days) → 365 000 ₸
         var forecast = StatsService.ForecastYearExpense(73_000m, 2026, new DateTime(2026, 3, 14));
         Assert.Equal(365_000m, forecast);
     }
@@ -72,7 +72,7 @@ public class ForecastTests
 public class BudgetStatusTests
 {
     private static BudgetStatus Make(decimal limit, decimal spent) =>
-        new(new Budget { Limit = limit }, new Category { Name = "Продукты" }, spent);
+        new(new Budget { Limit = limit }, new Category { Name = "Groceries" }, spent);
 
     [Fact]
     public void UnderLimit_IsNeitherWarningNorExceeded()
@@ -115,7 +115,7 @@ public class TransactionValidatorTests
     {
         var t = Valid();
         t.Amount = 0;
-        Assert.Contains(TransactionValidator.Validate(t), e => e.Contains("Сумма"));
+        Assert.Contains(TransactionValidator.Validate(t), e => e.Contains("Amount"));
     }
 
     [Fact]

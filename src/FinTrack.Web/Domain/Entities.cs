@@ -2,21 +2,21 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FinTrack.Web.Domain;
 
-/// <summary>Тип категории: расход или доход.</summary>
+/// <summary>Category type: expense or income.</summary>
 public enum CategoryType
 {
     Expense = 0,
     Income = 1
 }
 
-/// <summary>Откуда появилась операция.</summary>
+/// <summary>Where the transaction came from.</summary>
 public enum TransactionSource
 {
     Manual = 0,
     Import = 1
 }
 
-/// <summary>Базовая сущность: Id и служебные даты.</summary>
+/// <summary>Base entity: Id and audit dates.</summary>
 public abstract class Entity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -24,7 +24,7 @@ public abstract class Entity
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
-/// <summary>Счёт: карта, наличные, депозит.</summary>
+/// <summary>Account: card, cash, deposit.</summary>
 public class Account : Entity
 {
     public string Name { get; set; } = "";
@@ -33,7 +33,7 @@ public class Account : Entity
     public List<Transaction> Transactions { get; set; } = new();
 }
 
-/// <summary>Категория операций с цветом, иконкой и ключевыми словами для автокатегоризации.</summary>
+/// <summary>Transaction category with a color, icon and keywords for auto-categorization.</summary>
 public class Category : Entity
 {
     public string Name { get; set; } = "";
@@ -41,7 +41,7 @@ public class Category : Entity
     public string Color { get; set; } = "#4CAF50";
     public string Icon { get; set; } = "";
 
-    /// <summary>Ключевые слова через запятую (например: "magnum, small").</summary>
+    /// <summary>Comma-separated keywords (e.g. "magnum, small").</summary>
     public string Keywords { get; set; } = "";
 
     [NotMapped]
@@ -49,7 +49,7 @@ public class Category : Entity
         Keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }
 
-/// <summary>Операция. Сумма всегда положительная, направление определяется типом категории.</summary>
+/// <summary>Transaction. The amount is always positive; the direction is defined by the category type.</summary>
 public class Transaction : Entity
 {
     public decimal Amount { get; set; }
@@ -61,15 +61,15 @@ public class Transaction : Entity
     public Category? Category { get; set; }
     public TransactionSource Source { get; set; } = TransactionSource.Manual;
 
-    /// <summary>Уверенность ML-модели, если категорию предложил ML.NET.</summary>
+    /// <summary>ML model confidence, if the category was suggested by ML.NET.</summary>
     public float? MlConfidence { get; set; }
 
-    /// <summary>Сумма со знаком: доход +, расход −.</summary>
+    /// <summary>Signed amount: income +, expense −.</summary>
     [NotMapped]
     public decimal SignedAmount => Category?.Type == CategoryType.Income ? Amount : -Amount;
 }
 
-/// <summary>Месячный лимит расходов по категории.</summary>
+/// <summary>Monthly spending limit for a category.</summary>
 public class Budget : Entity
 {
     public Guid CategoryId { get; set; }

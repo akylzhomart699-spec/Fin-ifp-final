@@ -21,12 +21,12 @@ public sealed class CategoryService(
     public async Task<Result> SaveAsync(Category input)
     {
         var name = input.Name?.Trim() ?? "";
-        if (name.Length == 0) return Result.Fail("Введите название категории.");
-        if (name.Length > 60) return Result.Fail("Название не длиннее 60 символов.");
+        if (name.Length == 0) return Result.Fail("Enter a category name.");
+        if (name.Length > 60) return Result.Fail("The name must be 60 characters or fewer.");
 
         await using var db = await factory.CreateDbContextAsync();
         if (await db.Categories.AnyAsync(c => c.Name == name && c.Type == input.Type && c.Id != input.Id))
-            return Result.Fail("Такая категория уже есть.");
+            return Result.Fail("This category already exists.");
 
         var keywords = string.Join(", ", input.KeywordList.Select(k => k.ToLowerInvariant()).Distinct());
         var existing = await db.Categories.FirstOrDefaultAsync(c => c.Id == input.Id);
@@ -56,11 +56,11 @@ public sealed class CategoryService(
     {
         await using var db = await factory.CreateDbContextAsync();
         var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id);
-        if (category is null) return Result.Fail("Категория не найдена.");
+        if (category is null) return Result.Fail("Category not found.");
 
         var used = await db.Transactions.CountAsync(t => t.CategoryId == id);
         if (used > 0)
-            return Result.Fail($"В категории {used} операций. Сначала перенесите или удалите их.");
+            return Result.Fail($"The category has {used} transactions. Move or delete them first.");
 
         db.Categories.Remove(category);
         await db.SaveChangesAsync();
@@ -73,6 +73,6 @@ public sealed class CategoryService(
         _ = Task.Run(async () =>
         {
             try { await categorizer.TrainAsync(); }
-            catch (Exception ex) { logger.LogWarning(ex, "Переобучение модели не удалось"); }
+            catch (Exception ex) { logger.LogWarning(ex, "Model retraining failed"); }
         });
 }

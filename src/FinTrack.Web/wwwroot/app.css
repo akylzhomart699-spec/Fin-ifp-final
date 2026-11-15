@@ -2,7 +2,7 @@ html, body {
     font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
 }
 
-/* ---------- Деньги и категории ---------- */
+/* ---------- Money and categories ---------- */
 .money-income { color: var(--mud-palette-success); font-weight: 500; }
 .money-expense { color: var(--mud-palette-error); font-weight: 500; }
 
@@ -16,7 +16,7 @@ html, body {
     flex-shrink: 0;
 }
 
-/* ---------- Список операций ---------- */
+/* ---------- Transaction list ---------- */
 .tx-row {
     display: flex;
     align-items: center;
@@ -30,7 +30,7 @@ html, body {
 
 .clickable-rows tbody tr { cursor: pointer; }
 
-/* ---------- Импорт ---------- */
+/* ---------- Import ---------- */
 .file-drop {
     display: flex;
     flex-direction: column;
@@ -43,7 +43,7 @@ html, body {
 }
 .file-drop input[type=file] { max-width: 100%; }
 
-/* ---------- Кнопка «Добавить» ---------- */
+/* ---------- "Add" button ---------- */
 .fab-add {
     position: fixed !important;
     right: 24px;
@@ -51,7 +51,7 @@ html, body {
     z-index: 1200;
 }
 
-/* ---------- Нижнее меню: только телефоны и планшеты ---------- */
+/* ---------- Bottom navigation: phones and tablets only ---------- */
 .bottom-nav { display: none; }
 
 @media (max-width: 959.98px) {
@@ -86,7 +86,7 @@ html, body {
     .fab-add { right: 16px; }
 }
 
-/* ---------- Ошибки Blazor ---------- */
+/* ---------- Blazor errors ---------- */
 #blazor-error-ui {
     background: #fff3cd;
     bottom: 0;
